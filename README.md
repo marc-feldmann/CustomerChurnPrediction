@@ -1,14 +1,13 @@
 # Customer Churn Prediction with Feed-Forward Neural Networks
-Exploring FNNs' ability to predict whether telecom customers will churn
-Link to write-up: http://analyticsindiamag.com/document-classification-using-apache-spark-scala/
+Exploring FNNs' ability to predict whether telecom customers will churn.
 
-### Data
+## Project Status
 XXX
 
 ### Requirements
 XXX
 
-### Project Status
+### Data
 XXX
 
 ### Usage
