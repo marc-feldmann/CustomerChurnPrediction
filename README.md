@@ -2,7 +2,7 @@
 ### Executive Summary
 What, Why, How, Main Business Value Add
 Exploring FNNs' ability to predict whether telecom customers will churn.  
-
+Blog post: https://www.example.com
 
 ##
 ### Requirements
