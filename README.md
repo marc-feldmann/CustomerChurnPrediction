@@ -1,6 +1,6 @@
 # Customer Churn Prediction using Feed-Forward Neural Networks
+### Executive Summary
 Exploring FNNs' ability to predict whether telecom customers will churn.  
-Executive Summary
 
 ##
 ### Requirements
