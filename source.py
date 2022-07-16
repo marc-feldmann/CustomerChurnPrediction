@@ -21,10 +21,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import normalize
 from sklearn.decomposition import PCA
 from sklearn.utils.class_weight import compute_class_weight
-from sklearn.model_selection import train_test_split, cross_val_score, cross_validate,
-    GridSearchCV,
-    StratifiedKFold,
-)
+from sklearn.model_selection import train_test_split, cross_val_score, cross_validate, GridSearchCV, StratifiedKFold)
 import sklearn.metrics
 import time
 from matplotlib.lines import Line2D
@@ -100,13 +97,15 @@ marker = "v3_HO_bundle1_grid1_"
 
 # 1a) Join Data and Labels
 data = pd.read_table(
-    "C:\\Users\\marc.feldmann\\Documents\\data_science_local\\OCC\\orange_small_train.data"
+    "C:\\Users\\marc.feldmann\\Documents\\data_science_local\\CustomerChurnPrediction\\data\\orange_small_train.data"
 )
 data_labels = pd.read_table(
-    "C:\\Users\\marc.feldmann\\Documents\\data_science_local\\OCC\\orange_small_train_churn.labels",
+    "C:\\Users\\marc.feldmann\\Documents\\data_science_local\\CustomerChurnPrediction\\data\\orange_small_train_churn.labels",
     header=None,
     names=["Churn"],
 )
+
+data.head()
 
 # drop NaN-only columns and rows
 # write-up: create charts: ordered columns/rows, number of NaNs
