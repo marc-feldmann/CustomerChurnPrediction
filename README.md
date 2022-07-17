@@ -1,8 +1,8 @@
 # Customer Churn Prediction using Feed-Forward Neural Networks
-### Executive Summary
+### Executive Summary (same es in Notebook)
 Situation+Complication (What, Why)  
-Solution (How)
-Main Business Value Add
+Solution Approach (How)
+Main Business Value Add (Result)
 Details in blog post: https://www.example.com
 
 ##
