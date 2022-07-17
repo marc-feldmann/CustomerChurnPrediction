@@ -5,6 +5,8 @@ Solution Approach (How)
 Main Business Value Add (Result)
 Details in blog post: https://www.example.com
 
+Include simple visual immediately conveying the business value add (can be as simple as bar charts)
+
 ##
 ### Requirements
 (list here packages after cleaning code)
