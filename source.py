@@ -35,66 +35,12 @@ import statistics
 import numpy as np
 
 np.set_printoptions(formatter={"float_kind": "{:f}".format})
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-
-
 pd.set_option("float_format", "{:f}".format)
-
-# version 2: optimization potentials (versus v1) to explore ceteris paribus:
 marker = "v3_HO_bundle1_grid1_"
 
-# not explored/limitations: only individually optimized, due to constraints in processing power and time, optimization dependencies between variables neglected
-# only narrow ranges in gridsearch covered, so sound change that only found local optima per parameter
-# potential: NaN imputation with means on subsets of rows: one could search powerful clustering criteria first and than impute cluster means
-# also: was using smaller dataset, large dataset with many more variables may allow to increase a classifier's precision/recall
-# Make sure to also compare to others' results - I seem to be already working at the upper boundary of what's possible on this dataset with ANNs!
-# optimization potential: in practice, one would normally traing many different models and select/stack the best; show somehow that I'm aware of that
-# (optimization potential: add and compare AUC: simple logistic regression, random forest, 'flat' neural network, XGBoost)
-# optimization potential: put data into an AWS instance and run there
-
-# MOST EFFECTIVE/REASONABLE ORDER? DEPENDENCIES?
-# o	(X) Dropping all columns which have more than 80% missing values
-# o	(X) Increase test set size to 20%
-# o	(X) Do not resample at all but work with class weights
-# o	(X) NaN handling: try in addition to creating binary indicator variables per column
-#   - (X) impute with column-wise median
-#   - (X) impute with column-wise mode (in most cases this equals a zero imputation)
-#   - (X) impute with column-wise minimum
-#   - (X) impute with column-wise maximum
-#   - (X) impute with column-wise NaN frequency
-# o	Feature Engineering:
-#   - (X) DO NOT create binary indicator variables per column to indicate NaNs
-#   - add column containing rows' NaN frequencies
-# o	Remove outliers (before norm/stand)
-# o	go from feature normalization to Standardization, mind sparsity
-#   - (X) MinMax (wie in v1, nur jetzt über SKlearn Method statt manuell, daher zum Test reproduziert; diesen Schritt jetzt auch erst nach Splitting eingebaut)
-#   - (X) RobustScaler
-#   - (X) PowerTransformer
-# o       (X) Train and Reduce dimensionality (e.g., PCA); feature
-# selection would have benefit to be explanable, however, features
-# anonymized anyways
-
-# in write-up: reflect on fact neural networks / deep learning seem to be overhyped
-# make it a/the main point in the article that high accuracy can be misleading - have to also check recall and precision!
-# see e.g.: Peter Roßbach: "Neural Networks vs. Random Forests – Does it always have to be Deep Learning?
-# - make that explicit point of the write-up! "test" that!
-# still wanted to dabble with it and compare it to XGBoost (optimization potential: add more models later) which is often considered a good baseline model due to its high performance across various problems without much optimization (= out of the box)
-# also: highlight peculiarity of dataset: MANY NaNs, will be main challenge to handle these in a way not compromising churn predictions
-# also: make sure to reflect on choice of adequate performance metric, and how accuracy can be very misleading
-# also: in one of the projects I have to include a section on optimization; show here that I know how to work with learning curves
-# also: for visualization inspirations see here: https://towardsdatascience.com/predict-customer-churn-the-right-way-using-pycaret-8ba6541608ac
-# also: includein write-up my reflections for using precision/recall instead of AUC (argue by importance to detect minority class relative to importance of TPs and FPs)
-# also: specify neural network as "Feed-forward neural network" - why not recurrent, LSTM that can loop/have memory -given goal in this project is to probe the hypoe around "deep learning", unnecessary complexity
-# also: show/highlight that/how optimizing only accuracy can be misleading
 
 # 1) Data Preprocessing
-# BE PRAGMATIC: DO ONLY THE ESSENTIAL STUFF, AND ONLY WHEN MODEL QUALITY TURNS OUT SHITTY, OPTIMIZE THIS!
-# data requirements - log reg: https://www.statology.org/assumptions-of-logistic-regression/#:~:text=In%20contrast%20to%20linear%20regression,variance%2C%20also%20known%20as%20homoscedasticity.
-# data requirements - XGBoost: see my retail forecast project
-# data requirements - neural networks: NN are essentially concatenations
-# of log regressions, so see log reg requirements
-
 # 1a) Join Data and Labels
 data = pd.read_table(
     "C:\\Users\\marc.feldmann\\Documents\\data_science_local\\CustomerChurnPrediction\\data\\orange_small_train.data"
