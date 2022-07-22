@@ -51,6 +51,8 @@ data_labels = pd.read_table(
     names=["Churn"],
 )
 
+data.info()
+data_labels.head()
 data.head()
 
 # drop NaN-only columns and rows
