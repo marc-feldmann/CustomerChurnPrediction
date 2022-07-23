@@ -37,6 +37,7 @@ import numpy as np
 np.set_printoptions(formatter={"float_kind": "{:f}".format})
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 pd.set_option("float_format", "{:f}".format)
+pd.set_option('display.max_columns', None)
 marker = "v3_HO_bundle1_grid1_"
 
 
@@ -50,8 +51,6 @@ data_labels = pd.read_table(
     header=None,
     names=["Churn"],
 )
-
-
 
 # drop NaN-only columns and rows
 # write-up: create charts: ordered columns/rows, number of NaNs
