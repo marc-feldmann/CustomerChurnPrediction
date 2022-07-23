@@ -52,6 +52,7 @@ data_labels = pd.read_table(
 )
 
 
+
 # drop NaN-only columns and rows
 # write-up: create charts: ordered columns/rows, number of NaNs
 data.dropna(0, how="all", inplace=True)
