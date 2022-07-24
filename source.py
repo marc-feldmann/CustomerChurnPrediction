@@ -52,10 +52,11 @@ data_labels = pd.read_table(
     names=["Churn"],
 )
 
+
 # drop NaN-only columns and rows
 # write-up: create charts: ordered columns/rows, number of NaNs
-data.dropna(0, how="all", inplace=True)
-data.dropna(1, how="all", inplace=True, thresh=data.shape[0] * 0.2)
+data.dropna(0, how='all', inplace=True) # dropt alle zeilen die nur Nas haben
+data.dropna(1, inplace=True, thresh=data.shape[0] * 0.2) # dropt all spaltendie 
 
 # 1b) Encode Categorical Features: Since Too Many Different Values, Create
 # Dummy Variables Only For Most Frequent Column Values
