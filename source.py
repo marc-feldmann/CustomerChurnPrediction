@@ -21,7 +21,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import normalize
 from sklearn.decomposition import PCA
 from sklearn.utils.class_weight import compute_class_weight
-from sklearn.model_selection import train_test_split, cross_val_score, cross_validate, GridSearchCV, StratifiedKFold)
+from sklearn.model_selection import train_test_split, cross_val_score, cross_validate, GridSearchCV, StratifiedKFold
 import sklearn.metrics
 import time
 from matplotlib.lines import Line2D
@@ -52,89 +52,97 @@ data_labels = pd.read_table(
     names=["Churn"],
 )
 
+# put aside test data to avoid data leakage
+# stratified  splitting to maintain class balance in test data
+data_train, data_test, data_train_labels, data_test_labels = train_test_split(
+    data, data_labels, test_size=0.2, stratify=data_labels
+)
 
 # drop NaN-only columns and rows
 # write-up: create charts: ordered columns/rows, number of NaNs
-data.dropna(0, how='all', inplace=True) # dropt alle zeilen die nur Nas haben
-data.dropna(1, inplace=True, thresh=data.shape[0] * 0.2) # dropt all spaltendie 
+data_train.dropna(0, how='all', inplace=True) # dropt alle zeilen die nur Nas haben
+data_train.dropna(1, inplace=True, thresh=data_train.shape[0] * 0.2) # dropt all spaltendie 
 
 # 1b) Encode Categorical Features: Since Too Many Different Values, Create
 # Dummy Variables Only For Most Frequent Column Values
-data_obj_columns = data.select_dtypes(include=["object"]).columns.tolist()
-
+data_train_obj_columns = data_train.select_dtypes(include=['object']).columns.tolist()
+len(data_train_obj_columns)
 # loop: for each obj columns, take the m most frequent values and save to
 # list, apply get dummies to column for list values only, drop column
-for iteration, clm in enumerate(data_obj_columns):
+
+for iteration, clm in enumerate(data_train_obj_columns):
     print(
         "Encoding categorical variable ",
         iteration + 1,
         "/ ",
-        len(data_obj_columns))
-    most_freq_vals = data[clm].value_counts()[:20].index.tolist()
+        len(data_train_obj_columns))
+    most_freq_vals = data_train[clm].value_counts()[:20].index.tolist()
     dummy_clms = pd.get_dummies(
-        data[clm].loc[data[clm].isin(most_freq_vals)], prefix=clm
+        data_train[clm].loc[data_train[clm].isin(most_freq_vals)], prefix=clm
     )
-    data = pd.merge(
-        data,
+    data_train = pd.merge(
+        data_train,
         dummy_clms,
         left_index=True,
         right_index=True,
-        how="outer")
-    for dum_clm in data[dummy_clms.columns]:
-        data[dum_clm].fillna(0, inplace=True)
-    data.drop(clm, axis=1, inplace=True)
+        how='outer')
+    for dum_clm in data_train[dummy_clms.columns]:
+        data_train[dum_clm].fillna(0, inplace=True)
+    data_train.drop(clm, axis=1, inplace=True)
 
 # data.iloc[:, 174:].apply(pd.Series.value_counts)
 
 # 1c) Since fact that values are NaN/missing itself might contain
 # predictive power, create binary indicator column for each column with
 # NaNs
-for clm in data:
-    if data[clm].isna().sum() > 0:
+for clm in data_train:
+    if data_train[clm].isna().sum() > 0:
         print("Creating NaN indicator variable for column", clm)
-        data.insert(data.shape[1], f"{clm}_NaNInd", 0)
-        data[f"{clm}_NaNInd"] = np.where(np.isnan(data[clm]), 1, 0)
+        data_train.insert(data_train.shape[1], f"{clm}_NaNInd", 0)
+        data_train_train[f"{clm}_NaNInd"] = np.where(np.isnan(data_train[clm]), 1, 0)
+
+data_train['Var189_NaNInd']
 
 # 1d) Handle Missing Values: Mean Imputation
-round(data.isna().sum().sum() / (data.shape[0] * data.shape[1]), 10)
+round(data_train.isna().sum().sum() / (data_train.shape[0] * data_train.shape[1]), 10)
 # >>> data is sparse, NaNs in >16% of cells at this point
 
 # ### mean imputation
-# for iteration, clm in enumerate(data):
-#      print('Imputing mean for NaNs in column ', iteration+1, '/ ', data.shape[1], '...')
-#      data[clm].fillna(data[clm].mean(), inplace=True)
+# for iteration, clm in enumerate(data_train):
+#      print('Imputing mean for NaNs in column ', iteration+1, '/ ', data_train.shape[1], '...')
+#      data_train[clm].fillna(data_train[clm].mean(), inplace=True)
 
 # median imputation
-for iteration, clm in enumerate(data):
+for iteration, clm in enumerate(data_train):
     print("Imputing median for NaNs in column ",
-          iteration + 1, "/ ", data.shape[1], "...")
-    data[clm].fillna(data[clm].median(), inplace=True)
+          iteration + 1, "/ ", data_train.shape[1], "...")
+    data_train[clm].fillna(data_train[clm].median(), inplace=True)
 
 # ### mode imputation
-# for iteration, clm in enumerate(data):
-#      print('Imputing mode for NaNs in column ', iteration+1, '/ ', data.shape[1], '...')
-#      data[clm].fillna(data[clm].mode(), inplace=True)
+# for iteration, clm in enumerate(data_train):
+#      print('Imputing mode for NaNs in column ', iteration+1, '/ ', data_train.shape[1], '...')
+#      data_train[clm].fillna(data_train[clm].mode(), inplace=True)
 
 # min imputation
-# for iteration, clm in enumerate(data):
-#      print('Imputing minimum for NaNs in column ', iteration+1, '/ ', data.shape[1], '...')
-#      data[clm].fillna(data[clm].min(), inplace=True)
+# for iteration, clm in enumerate(data_train):
+#      print('Imputing minimum for NaNs in column ', iteration+1, '/ ', data_train.shape[1], '...')
+#      data_train[clm].fillna(data_train[clm].min(), inplace=True)
 
 # ### max imputation
-# for iteration, clm in enumerate(data):
-#      print('Imputing maximum for NaNs in column ', iteration+1, '/ ', data.shape[1], '...')
-#      data[clm].fillna(data[clm].max(), inplace=True)
+# for iteration, clm in enumerate(data_train):
+#      print('Imputing maximum for NaNs in column ', iteration+1, '/ ', data_train.shape[1], '...')
+#      data_train[clm].fillna(data_train[clm].max(), inplace=True)
 
 # ### frequency imputation
-# for iteration, clm in enumerate(data):
-#      print('Imputing frequency for NaNs in column ', iteration+1, '/ ', data.shape[1], '...')
-#      data[clm].fillna(data[clm].isna().sum(), inplace=True)
+# for iteration, clm in enumerate(data_train):
+#      print('Imputing frequency for NaNs in column ', iteration+1, '/ ', data_train.shape[1], '...')
+#      data_train[clm].fillna(data_train[clm].isna().sum(), inplace=True)
 
 # ALTERNATIVE: kNN imputation - others' tests have suggested only minor contribution to model quality, but long runtime - so, decided to go with simple mean imputation
 # imputer = KNNImputer(n_neighbors=2)
-# imputer.fit_transform(data)
+# imputer.fit_transform(data_train)
 
-data.isna().sum().sum() == 0
+data_train.isna().sum().sum() == 0
 
 # 1e) Split Data Into Training, Validation, and Test Data Sets
 # since I do not have test data target values used in the KDD competition,
@@ -142,20 +150,15 @@ data.isna().sum().sum() == 0
 # training, evaluation)
 
 # Check Class Distribution Prior to Splitting
-data_labels["Churn"] = (data_labels["Churn"] + 1) / 2
-# plt.hist(data_labels['Churn'], bins=3)
+data_train_labels["Churn"] = (data_train_labels["Churn"] + 1) / 2
+
+# plt.hist(data_train_labels['Churn'], bins=3)
 # plt.show()
 # >>> Churn class is heavily imbalanced (as expected)
 
 # feature selection
-# data = SelectKBest(chi2, k=400).fit_transform(data, data_labels)
+# data_train = SelectKBest(chi2, k=400).fit_transform(data_train, data_train_labels)
 
-# Stratified splitting to create validation and test data
-# data, data_labels = data.iloc[:, :], data_labels.iloc[:, :]
-data_train, data_test, data_train_labels, data_test_labels = train_test_split(
-    data, data_labels, test_size=0.2, stratify=data_labels
-)
-# data_test, data_val, data_test_labels, data_val_labels = train_test_split(data_test, data_test_labels, test_size=0.5, stratify=data_test_labels)
 
 # Scale Data (Standardize/Normalize Data). Procedure: Fit scaler to train data, then apply fitted scaler to train and test data
 ### MinMaxScaler (Normalization)
@@ -500,6 +503,13 @@ model.fit(
     verbose=2,
     class_weight=class_weights,
 )
+
+# apply same preprocessing steps to test data that have been applied to training data
+# the test data simulates new data that would be incoming when model would be deployed
+
+
+
+
 
 # generate predictions on test data
 data_test_preds = model.predict(data_test)
