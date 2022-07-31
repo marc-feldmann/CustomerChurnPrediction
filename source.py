@@ -101,7 +101,7 @@ for clm in data_train:
     if data_train[clm].isna().sum() > 0:
         print("Creating NaN indicator variable for column", clm)
         data_train.insert(data_train.shape[1], f"{clm}_NaNInd", 0)
-        data_train_train[f"{clm}_NaNInd"] = np.where(np.isnan(data_train[clm]), 1, 0)
+        data_train[f"{clm}_NaNInd"] = np.where(np.isnan(data_train[clm]), 1, 0)
 
 
 # 1d) Handle Missing Values: Mean Imputation
@@ -229,7 +229,6 @@ data_train[data_train_num_columns] = scaler.fit_transform(data_train[data_train_
 # specify MLP / FNN (feed-forward neural network model)
 start_time = time.time()
 
-
 def create_model(
     learning_rate=0.001,
     dropout_rate=0.0,
@@ -318,7 +317,7 @@ def create_model(
 model = KerasClassifier(build_fn=create_model, verbose=2)
 
 # define parameter set GridSearch should search (the 'grid')
-grid_name = "param_bundle4_grid"
+grid_name = "param_bundleTEST_grid"
 
 if grid_name == "param_bundle1_grid":
     param_grid = dict(
@@ -365,7 +364,7 @@ elif grid_name == "param_bundleTEST_grid":
     param_grid = dict(
         batch_size=[80],
         learning_rate=[0.001],
-        epochs=[50],
+        epochs=[2],
         dropout_rate=[0.5],
         noise=[0.001],
         reg=[0.001],
@@ -435,9 +434,68 @@ results.to_csv(
 print("TOTAL RUNTIME: --- %s seconds ---" % (time.time() - start_time))
 
 # 3) Model Evaluation on unseen Data (the priorly held out "data_test" set)
-# ## specify Feed-forward neural network model with the Grid search optimized parameters
-#
+## apply same preprocessing steps to test data that have been applied to training data
+## the purpose of the test data simulates new data that would be incoming when model would be deployed
 
+data_test.dropna(0, how='all', inplace=True) # dropt alle zeilen die nur Nas haben
+data_test.dropna(1, inplace=True, thresh=data_test.shape[0] * 0.2) # dropt all spaltendie 
+
+data_test_num_columns = data_test.select_dtypes(include=['float64', 'int64']).columns.tolist()
+data_test_obj_columns = data_test.select_dtypes(include=['object']).columns.tolist()
+
+for iteration, clm in enumerate(data_test_obj_columns):
+    print(
+        "Encoding categorical variable ",
+        iteration + 1,
+        "/ ",
+        len(data_test_obj_columns))
+    most_freq_vals = data_test[clm].value_counts()[:20].index.tolist()
+    dummy_clms = pd.get_dummies(
+        data_test[clm].loc[data_test[clm].isin(most_freq_vals)], prefix=clm
+    )
+    data_test = pd.merge(
+        data_test,
+        dummy_clms,
+        left_index=True,
+        right_index=True,
+        how='outer')
+    for dum_clm in data_test[dummy_clms.columns]:
+        data_test[dum_clm].fillna(0, inplace=True)
+    data_test.drop(clm, axis=1, inplace=True)
+
+for clm in data_test:
+    if data_test[clm].isna().sum() > 0:
+        print("Creating NaN indicator variable for column", clm)
+        data_test.insert(data_test.shape[1], f"{clm}_NaNInd", 0)
+        data_test[f"{clm}_NaNInd"] = np.where(np.isnan(data_test[clm]), 1, 0)
+
+for iteration, clm in enumerate(data_test):
+    print("Imputing median for NaNs in column ",
+          iteration + 1, "/ ", data_test.shape[1], "...")
+    data_test[clm].fillna(data_test[clm].median(), inplace=True)
+
+data_test_labels['Churn'] = (data_test_labels['Churn'] + 1) / 2
+
+data_test[data_test_num_columns] = scaler.transform(data_test[data_test_num_columns])
+
+## ensure that test data has same features in same order as those the model has learned from the train data
+### features that are in train and test data > retain in test data
+### features that are in train data only > add to test data (fill with NaNs)
+features_train_only = data_train.columns.difference(data_test.columns) 
+data_test[features_train_only] = np.nan
+
+### features that are in test data only > drop
+features_test_only = data_test.columns.difference(data_train.columns) 
+data_test.drop(labels=features_test_only, axis=1, inplace=True)
+
+### ensure features in test data follow feature order in train data
+data_test = data_test[data_train.columns]
+
+### test whether train and test data columns are identical (features and feature order)
+data_test.columns == data_train.columns
+
+
+## specify Feed-forward neural network model with the Grid search optimized parameters
 def create_final_model(
     learning_rate=0.0001,
     dropout_rate=0.1,
@@ -499,17 +557,10 @@ model.fit(
     data_train,
     data_train_labels,
     batch_size=80,
-    epochs=50,
+    epochs=2,
     verbose=2,
     class_weight=class_weights,
 )
-
-# apply same preprocessing steps to test data that have been applied to training data
-# the test data simulates new data that would be incoming when model would be deployed
-
-
-
-
 
 # generate predictions on test data
 data_test_preds = model.predict(data_test)
