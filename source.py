@@ -11,6 +11,7 @@ from keras.layers import Dense
 from keras.models import Sequential
 import keras.metrics
 import tensorflow as tf
+from tensorflow import set_random_seed
 from xgboost import train
 from imblearn.combine import SMOTETomek
 from sklearn.preprocessing import PowerTransformer, RobustScaler, MinMaxScaler
@@ -33,13 +34,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import statistics
 import numpy as np
+from numpy.random import seed
 
 np.set_printoptions(formatter={"float_kind": "{:f}".format})
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 pd.set_option("float_format", "{:f}".format)
 pd.set_option('display.max_columns', None)
 marker = "v3_HO_bundle1_grid1_"
-
+seed(3992)
+set_random_seed(3992)
 
 # 1) Data Preprocessing
 # 1a) Join Data and Labels
@@ -117,7 +120,7 @@ round(data_train.isna().sum().sum() / (data_train.shape[0] * data_train.shape[1]
 for iteration, clm in enumerate(data_train):
     print("Imputing median for NaNs in column ",
           iteration + 1, "/ ", data_train.shape[1], "...")
-    data_train[clm].fillna(data_train[clm].median(), inplace=True)
+    data_train[clm].fillna(data_train[clm].median(), inplace=True)cate 
 
 # ### mode imputation
 # for iteration, clm in enumerate(data_train):
@@ -364,16 +367,17 @@ elif grid_name == "param_bundleTEST_grid":
     param_grid = dict(
         batch_size=[80],
         learning_rate=[0.001],
-        epochs=[2],
-        dropout_rate=[0.5],
+        epochs=[1],
+        dropout_rate=[0.0],
         noise=[0.001],
         reg=[0.001],
-        beta_1=[0.8],
+        beta_1=[0.9],
         beta_2=[0.999],
-        weight_constraint=[8.0],
+        weight_constraint=[100.0],
         deep=["n"],
-        neurons=[350],
+        neurons=[120],
     )
+
 
 # fit GridSearch model
 scoring = {
