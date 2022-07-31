@@ -65,7 +65,9 @@ data_train.dropna(1, inplace=True, thresh=data_train.shape[0] * 0.2) # dropt all
 
 # 1b) Encode Categorical Features: Since Too Many Different Values, Create
 # Dummy Variables Only For Most Frequent Column Values
+data_train_num_columns = data_train.select_dtypes(include=['float64', 'int64']).columns.tolist()
 data_train_obj_columns = data_train.select_dtypes(include=['object']).columns.tolist()
+len(data_train_num_columns)
 len(data_train_obj_columns)
 # loop: for each obj columns, take the m most frequent values and save to
 # list, apply get dummies to column for list values only, drop column
@@ -101,7 +103,6 @@ for clm in data_train:
         data_train.insert(data_train.shape[1], f"{clm}_NaNInd", 0)
         data_train_train[f"{clm}_NaNInd"] = np.where(np.isnan(data_train[clm]), 1, 0)
 
-data_train['Var189_NaNInd']
 
 # 1d) Handle Missing Values: Mean Imputation
 round(data_train.isna().sum().sum() / (data_train.shape[0] * data_train.shape[1]), 10)
@@ -163,8 +164,7 @@ data_train_labels["Churn"] = (data_train_labels["Churn"] + 1) / 2
 # Scale Data (Standardize/Normalize Data). Procedure: Fit scaler to train data, then apply fitted scaler to train and test data
 ### MinMaxScaler (Normalization)
 scaler = MinMaxScaler()
-data_train.iloc[:, :174] = scaler.fit_transform(data_train.iloc[:, :174])
-data_test.iloc[:, :174] = scaler.transform(data_test.iloc[:, :174])
+data_train[data_train_num_columns] = scaler.fit_transform(data_train[data_train_num_columns])
 
 ### RobustScaler (Standardization)
 # scaler_robscal = RobustScaler()
