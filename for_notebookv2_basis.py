@@ -36,6 +36,7 @@ y = pd.read_table('data/orange_small_train_churn.labels', header=None, names=['C
 # plt.hist(y['Churn'], bins=3)
 # y['Churn'].value_counts()
 
+
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=3992)
 
@@ -43,7 +44,7 @@ X_train.info()
 X_test.info()
 
 X_train.dropna(axis=0, how='all', inplace=True)
-X_train.dropna(axis=1, inplace=True, thresh=X_train.shape[0] * 0.2)
+X_train.dropna(axis=1, how='all', inplace=True)
 
 # temp = X_train.isna().sum()/(X_train.shape[0])
 # plt.bar(range(len(temp)), sorted(temp), color='blue', alpha=0.65)
@@ -51,7 +52,13 @@ X_train.dropna(axis=1, inplace=True, thresh=X_train.shape[0] * 0.2)
 # X_train.shape
 
 X_train['Var73'] = X_train['Var73'].astype('float64')
+
+# turn all categorical features into data type 'category'
+# (how to find the proper cutoff calue?)
 features_cat_train = list(X_train.select_dtypes(include=['object']).columns)
+for clm in features_cat_train:
+    X_train.loc[X_train[clm].value_counts(dropna=False)[X_train[clm]].values < X_train.shape[0] * 0.015, clm] = "RARE_VALUE"
+
 
 ##################
 ##################
@@ -120,10 +127,12 @@ y_train.value_counts()
 
 ######### prep test set
 X_test.dropna(0, how='all', inplace=True)
-X_test.dropna(1, inplace=True, thresh=X_test.shape[0] * 0.2) 
+X_test.dropna(1, how='all', inplace=True) 
 
 X_test['Var73'] = X_test['Var73'].astype('float64')
 features_cat_test = list(X_test.select_dtypes(include=['object']).columns)
+for clm in features_cat_test:
+    X_test.loc[X_test[clm].value_counts(dropna=False)[X_test[clm]].values < X_test.shape[0] * 0.015, clm] = "RARE_VALUE"
 
 for iteration, clm in enumerate(features_cat_test):
     print(
@@ -151,7 +160,6 @@ for clm in X_test:
 X_test.fillna(X.median(), inplace=True)
 
 y_test['Churn'] = (y['Churn'] + 1) / 2
-
 
 
 ## ensure that test data has same features in same order as those the model has learned from the train data
@@ -182,11 +190,10 @@ X_train_pp = X_train.copy()
 X_test_pp = X_test.copy()
 
 # select numerical columns that are not binary
-temp = X_train.iloc[:, :42]
-features_num_train_nonbinary = list(temp.select_dtypes(exclude=['object']).columns)
 
-from sklearn.preprocessing import RobustScaler
-scaler = RobustScaler()
+features_num_train_nonbinary = X_train.iloc[:, :174].columns
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
 X_train[features_num_train_nonbinary] = scaler.fit_transform(X_train[features_num_train_nonbinary])
 
 
@@ -200,7 +207,7 @@ random_classifier = RandomForestClassifier()
 parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
 random_grid = GridSearchCV(random_classifier, parameters)
 random_grid.fit(X_train_fs, np.array(y_train_fs['Churn']))
-print("Best HyperParameter: ", random_grid.best_params_)
+print("Optimal Hyperarams: ", random_grid.best_params_)
 
 rf_model = RandomForestClassifier(
     n_estimators=75,
@@ -215,20 +222,20 @@ rf_model = RandomForestClassifier(
     verbose=0,
     warm_start=False)
 
-rf_model.fit(X=X_train, np.array(y_train['Churn']))
+# search features on full training set
+rf_model.fit(X_train, np.array(y_train['Churn']))
 
 import pickle
 pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
 rf_model = pickle.load(open('data/rf_model.sav', 'rb'))
 
-feature_importances = pd.DataFrame(rf_model.feature_importances_,
-                                   index = X_train_fs.columns,
-                                    columns=['importance']).sort_values('importance', ascending=False)
+feature_importances = pd.DataFrame(rf_model.feature_importances_, index=X_train.columns, columns=['importance']).sort_values('importance', ascending=False)
 
-# std = np.std([rf_model.feature_importances_ for rf_model in rf_model.estimators_], axis=0)
-
+# feature importance plot
+# std = np.std([rf_model.feature_importances_[:101] for rf_model in rf_model.estimators_], axis=0)
+# import matplotlib.pyplot as plt
 # fig, ax = plt.subplots()
-# feature_importances.plot.bar(yerr=std, ax=ax)
+# feature_importances[:101].plot.bar(yerr=std, ax=ax)
 # ax.set_title("Feature importances using MDI")
 # ax.set_ylabel("Mean Decrease in Impurity (MDI)")
 # fig.tight_layout()
@@ -240,28 +247,16 @@ X_train = X_train_pp[most_imp_feat]
 X_test = X_test_pp[most_imp_feat]
 
 # scale
-# ab welche spalte beginnen die binary columns?
+X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+X_test = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns)
 
-temp1, temp2 = X_train.iloc[:, :_], X_test.iloc[:, :_]
-
-# überhaupt noch objects drin?
-features_num_train_nonbinary = list(temp1.select_dtypes(exclude=['object']).columns)
-features_num_test_nonbinary = list(temp2.select_dtypes(exclude=['object']).columns)
-
-from sklearn.preprocessing import RobustScaler
-scaler = RobustScaler()
-X_train_pp[features_num_train_nonbinary] = scaler.fit_transform(X_train_pp[features_num_train_nonbinary])
-X_test_pp[features_num_test_nonbinary] = scaler.transform(X_test_pp[features_num_test_nonbinary])
-
-y_train.replace(-1, 0, inplace=True)
-y_test.replace(-1, 0, inplace=True)
-
+X_train.info()
+X_test.info()
 
 ##################
 ##################
-
 output_dim = 1
-input_dim = X_train_pp.shape[1]
+input_dim = X_train.shape[1]
 
 batch_size = 512
 nb_epoch = 50
@@ -290,8 +285,19 @@ model.summary()
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 history = model.fit(X_train, y_train, batch_size=batch_size, epochs=8, verbose=1, validation_split=0.2)
 
-X_test.head()
 
-import sklearn.metrics
+from sklearn import metrics
 y_pred = model.predict(X_test)
-print("ROC-AUC score is {}".format(sklearn.metrics.roc_auc_score(y_test, y_pred)))
+y_pred = pd.DataFrame(y_pred, columns = ['churn'])
+print("ROC-AUC score is {}".format(metrics.roc_auc_score(y_test, y_pred)))
+
+import matplotlib.pyplot as plt
+precision, recall, thresholds = metrics.precision_recall_curve(y_test, y_pred)
+auc = metrics.auc(recall, precision)
+no_skill = y_test.sum() / len(y_test)
+plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label='Churn Informed Guessing')
+plt.plot(recall, precision, marker='.', label='ANN Churn Predictor')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.legend()
+plt.show()
