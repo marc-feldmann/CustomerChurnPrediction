@@ -1,3 +1,4 @@
+from email.headerregistry import HeaderRegistry
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -189,8 +190,7 @@ X_test.isna().sum().sum()
 X_train_pp = X_train.copy()
 X_test_pp = X_test.copy()
 
-# select numerical columns that are not binary
-
+# scale numerical columns except OHEd and NaN indicator columns
 features_num_train_nonbinary = X_train.iloc[:, :174].columns
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
@@ -198,35 +198,35 @@ X_train[features_num_train_nonbinary] = scaler.fit_transform(X_train[features_nu
 
 
 #### FEATURE SELECTION
-# create random subsets of training data for optimizing the feature selection mode to reduce computation time
-_, X_train_fs, _, y_train_fs = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=3992)
+# # create random subset of training data to reduce duration of feature selection model optimizing
+# _, X_train_fs, _, y_train_fs = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=3992)
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
-random_classifier = RandomForestClassifier()
-parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
-random_grid = GridSearchCV(random_classifier, parameters)
-random_grid.fit(X_train_fs, np.array(y_train_fs['Churn']))
-print("Optimal Hyperarams: ", random_grid.best_params_)
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.model_selection import GridSearchCV
+# random_classifier = RandomForestClassifier()
+# parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
+# random_grid = GridSearchCV(random_classifier, parameters)
+# random_grid.fit(X_train_fs, np.array(y_train_fs['Churn']))
+# print("Optimal Hyperarams: ", random_grid.best_params_)
 
-rf_model = RandomForestClassifier(
-    n_estimators=75,
-    max_depth=5,
-    max_features=None,   
-    max_leaf_nodes=None,
-    bootstrap=True,
-    oob_score=True,
-    n_jobs=-1,
-    class_weight='balanced',
-    random_state=3992,
-    verbose=0,
-    warm_start=False)
+# rf_model = RandomForestClassifier(
+#     n_estimators=75,
+#     max_depth=5,
+#     max_features=None,   
+#     max_leaf_nodes=None,
+#     bootstrap=True,
+#     oob_score=True,
+#     n_jobs=-1,
+#     class_weight='balanced',
+#     random_state=3992,
+#     verbose=0,
+#     warm_start=False)
 
-# search features on full training set
-rf_model.fit(X_train, np.array(y_train['Churn']))
+# # search features on full training set
+# rf_model.fit(X_train, np.array(y_train['Churn']))
 
 import pickle
-pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
+# pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
 rf_model = pickle.load(open('data/rf_model.sav', 'rb'))
 
 feature_importances = pd.DataFrame(rf_model.feature_importances_, index=X_train.columns, columns=['importance']).sort_values('importance', ascending=False)
@@ -246,12 +246,33 @@ most_imp_feat = feature_importances[:100].index.to_list()
 X_train = X_train_pp[most_imp_feat]
 X_test = X_test_pp[most_imp_feat]
 
-# scale
+# scale numerical columns except OHEd and NaN indicator columns
+# store all columns that are nonbinary, all columns which only have two values
+temp = []
+for clm in X_train.columns:
+    if X_train[clm].nunique() <> 2:
+        temp.append(clm)
+
+'''
+STOPPED HERE:
+'''
+
+X_train[temp] = scaler.fit_transform(X_train[temp])
+temp = []
+for clm in X_test.columns:
+    if X_test[clm].nunique() <> 2:
+        temp.append(clm)
+X_test[temp] = scaler.transform(X_test[temp])
+
+
+## PROBLEM! this currently also scales binary columns!
 X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
 X_test = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns)
 
 X_train.info()
 X_test.info()
+
+X_train.head()
 
 ##################
 ##################
