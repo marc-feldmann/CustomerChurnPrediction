@@ -177,46 +177,49 @@ X_test.isna().sum().sum()
 # X_train[features_f64_train] = X_train[features_f64_train].astype('float32')
 # X_train = np.asarray(X_train).astype('float32')
 
-features_num_train = list(X_train.select_dtypes(include=['float64, int64']).columns)
-features_num_test = list(X_test.select_dtypes(include=['float64, int64']).columns)
+# preserve preprocessesed and feature-harmonized, still unscaled train and test sets
+X_train_pp = X_train.copy()
+X_test_pp = X_test.copy()
+
+# select numerical columns that are not binary
+temp = X_train.iloc[:, :42]
+features_num_train_nonbinary = list(temp.select_dtypes(exclude=['object']).columns)
 
 from sklearn.preprocessing import RobustScaler
 scaler = RobustScaler()
-X_train[features_num_train] = scaler.fit_transform(X_train[features_num_train])
-X_test[features_num_test] = scaler.transform(X_test[features_num_test])
-
-X_train.info()
-X_test.info()
+X_train[features_num_train_nonbinary] = scaler.fit_transform(X_train[features_num_train_nonbinary])
 
 
 #### FEATURE SELECTION
-# X_train, X_cv, y_train, y_cv = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=42)
+# create random subsets of training data for features selection to reduce computation time
+X_train_fs, _, y_train_fs, _ = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=3992)
 
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.model_selection import GridSearchCV
-# random_classifier = RandomForestClassifier()
-# parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
-# random_grid = GridSearchCV(random_classifier, parameters, cv = 3)
-# random_grid.fit(X_cv, np.array(y_cv['Churn']))
-# print("Best HyperParameter: ",random_grid.best_params_)
 
-# rf_model = RandomForestClassifier(
-#     n_estimators=75,
-#     max_depth=5,
-#     max_features=None,   
-#     max_leaf_nodes=None,
-#     bootstrap=True,
-#     oob_score=True,
-#     n_jobs=-1,
-#     class_weight='balanced',
-#     random_state=42,
-#     verbose=0,
-#     warm_start=False)
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
+random_classifier = RandomForestClassifier()
+parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
+random_grid = GridSearchCV(random_classifier, parameters, random_state=3992)
+random_grid.fit(X_train, np.array(y_train['Churn']))
+print("Best HyperParameter: ", random_grid.best_params_)
 
-# rf_model.fit(X=X_train, y=y_train)
+rf_model = RandomForestClassifier(
+    n_estimators=75,
+    max_depth=5,
+    max_features=None,   
+    max_leaf_nodes=None,
+    bootstrap=True,
+    oob_score=True,
+    n_jobs=-1,
+    class_weight='balanced',
+    random_state=3992,
+    verbose=0,
+    warm_start=False)
+
+rf_model.fit(X=X_train, y=y_train)
 
 import pickle
-# pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
+pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
 rf_model = pickle.load(open('data/rf_model.sav', 'rb'))
 
 feature_importances = pd.DataFrame(rf_model.feature_importances_,
@@ -232,28 +235,24 @@ feature_importances = pd.DataFrame(rf_model.feature_importances_,
 # fig.tight_layout()
 # fig.show()
 
-# restrict training data to only most important features
+# reduce preserved training and test datasets to most important features
 most_imp_feat = feature_importances[:100].index.to_list()
-X_red=X[most_imp_feat]
+X_train = X_train_pp[most_imp_feat]
+X_test = X_test_pp[most_imp_feat]
 
-lst1=[]
-for i in X_train.columns:
-    if X_train[i].dtypes==float:
-        lst1.append(i)
+# scale
+# ab welche spalte beginnen die binary columns?
 
-from sklearn.preprocessing import StandardScaler
-def standardize_data(X_train, X_test):
-    float_feats_train = X_train[lst1]
-    float_feats_test = X_test[lst1]
-    scaler = StandardScaler()
-    X_train_stand = pd.DataFrame(scaler.fit_transform(float_feats_train), columns = lst1, index = X_train.index)
-    X_test_stand = pd.DataFrame(scaler.transform(float_feats_test), columns = lst1, index = X_test.index)
-    X_train_stand = pd.merge(X_train_stand, X_train.loc[:, ~X_train.columns.isin(lst1)], left_index=True, right_index=True)
-    X_test_stand = pd.merge(X_test_stand, X_test.loc[:, ~X_test.columns.isin(lst1)], left_index=True, right_index=True)
-    return X_train_stand, X_test_stand
+temp1, temp2 = X_train.iloc[:, :_], X_test.iloc[:, :_]
 
-X_train, X_test, y_train, y_test = train_test_split(train_data_1,churn, stratify=churn, test_size=0.2, random_state=42)
-X_train, X_test=standardize_data(X_train, X_test)
+# überhaupt noch objects drin?
+features_num_train_nonbinary = list(temp1.select_dtypes(exclude=['object']).columns)
+features_num_test_nonbinary = list(temp2.select_dtypes(exclude=['object']).columns)
+
+from sklearn.preprocessing import RobustScaler
+scaler = RobustScaler()
+X_train_pp[features_num_train_nonbinary] = scaler.fit_transform(X_train_pp[features_num_train_nonbinary])
+X_test_pp[features_num_test_nonbinary] = scaler.transform(X_test_pp[features_num_test_nonbinary])
 
 y_train.replace(-1, 0, inplace=True)
 y_test.replace(-1, 0, inplace=True)
@@ -263,7 +262,7 @@ y_test.replace(-1, 0, inplace=True)
 ##################
 
 output_dim = 1
-input_dim = X_train.shape[1]
+input_dim = X_train_pp.shape[1]
 
 batch_size = 512
 nb_epoch = 50
