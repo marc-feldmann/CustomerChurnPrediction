@@ -1,4 +1,3 @@
-from email.headerregistry import HeaderRegistry
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -38,21 +37,123 @@ y = pd.read_table('data/orange_small_train_churn.labels', header=None, names=['C
 # y['Churn'].value_counts()
 
 
+X.dropna(axis=0, how='all', inplace=True)
+X.dropna(axis=1, how='all', inplace=True)
+X['Var73'] = X['Var73'].astype('float')
+
+X.info()
+
+################## TEST AND  COMPARE TO OTHER GUYS FUNCTION
+features_cat = list(X.select_dtypes(include=['object']).columns)
+for clm in features_cat:
+    X.loc[X[clm].value_counts(dropna=False)[X[clm]].values < X.shape[0] * 0.015, clm] = "RARE_VALUE"
+
+X[X == 'RARE_VALUE'].count().sum()
+print(X)
+# results in 481901 RARE VALUE replacements
+
+### the other function:
+##prep:
+DataVars = X.columns
+data_types = {Var: X[Var].dtype for Var in DataVars}
+for Var in DataVars:
+    if data_types[Var] != float:
+        x = X[Var].astype('category')
+        X.loc[:, Var] = x
+        data_types[Var] = x.dtype
+
+categorical_DataVars = [Var for Var in DataVars if data_types[Var] != float]
+categorical_levels = X[categorical_DataVars].apply(lambda col: len(col.cat.categories))
+categorical_x_var_names = categorical_levels[categorical_levels > 10].index
+
+##functioN;
+def replaceInfrequentLevels(data, val=0.015):
+    collapsed_categories = {}
+    for categorical_x_var_name in categorical_x_var_names:
+        x = data[categorical_x_var_name].copy()
+        for category in x.cat.categories:
+            matching_rows_yesno = x == category
+            if matching_rows_yesno.sum() < val * data.shape[0]: #wenn kategorie weniger als 1.5% der reihen belegt
+                if categorical_x_var_name in collapsed_categories:
+                    collapsed_categories[categorical_x_var_name].append(category)
+                else:
+                    collapsed_categories[categorical_x_var_name] = [category]
+                if 'RARE_VALUE' not in data[categorical_x_var_name].cat.categories:
+                    data[categorical_x_var_name].cat.add_categories('RARE_VALUE', inplace=True)
+                data.loc[matching_rows_yesno, categorical_x_var_name] = 'RARE_VALUE'
+                data[categorical_x_var_name].cat.remove_categories(category, inplace=True)
+    return data
+
+X = replaceInfrequentLevels(X)
+X[X == 'RARE_VALUE'].count().sum()
+print(X)
+
+X.info()
+
+for categorical_var_name in categorical_x_var_names:
+    X[categorical_var_name].cat.add_categories("unknown_"+categorical_var_name, inplace=True)
+    X[categorical_var_name].fillna("unknown_"+categorical_var_name, inplace=True)
+
+X['Var228'].value_counts()
+X.fillna(X.median(), inplace=True)
+# results in 481901 RARE VALUE replacements
+
+##################
+
+X1 = pd.get_dummies(X, columns=['Var191',
+ 'Var192',
+ 'Var193',
+ 'Var194',
+ 'Var195',
+ 'Var196',
+ 'Var197',
+ 'Var198',
+ 'Var199',
+ 'Var200',
+ 'Var201',
+ 'Var202',
+ 'Var203',
+ 'Var204',
+ 'Var205',
+ 'Var206',
+ 'Var207',
+ 'Var208',
+ 'Var210',
+ 'Var211',
+ 'Var212',
+ 'Var213',
+ 'Var214',
+ 'Var215',
+ 'Var216',
+ 'Var217',
+ 'Var218',
+ 'Var219',
+ 'Var220',
+ 'Var221',
+ 'Var222',
+ 'Var223',
+ 'Var224',
+ 'Var225',
+ 'Var226',
+ 'Var227',
+ 'Var228',
+ 'Var229'])
+
+X_train, X_test, y_train, y_test = train_test_split(X1, y, stratify=y, test_size=0.2, random_state=3992)
+
+
+##################
+
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=3992)
 
-X_train.info()
-X_test.info()
+X_train.fillna(X.median(), inplace=True)
 
-X_train.dropna(axis=0, how='all', inplace=True)
-X_train.dropna(axis=1, how='all', inplace=True)
 
 # temp = X_train.isna().sum()/(X_train.shape[0])
 # plt.bar(range(len(temp)), sorted(temp), color='blue', alpha=0.65)
 
 # X_train.shape
-
-X_train['Var73'] = X_train['Var73'].astype('float64')
 
 # turn all categorical features into data type 'category'
 # (how to find the proper cutoff calue?)
@@ -65,11 +166,7 @@ for clm in features_cat_train:
 ##################
 
 for iteration, clm in enumerate(features_cat_train):
-    print(
-        "Encoding categorical variable (training set)",
-        iteration + 1,
-        "/ ",
-        len(features_cat_train))
+    print("Encoding categorical variable (training set)", iteration+1, "/ ", len(features_cat_train))
     most_freq_vals = X_train[clm].value_counts()[:20].index.tolist()
     dummy_clms = pd.get_dummies(X_train[clm].loc[X_train[clm].isin(most_freq_vals)], prefix=clm)
     X_train = pd.merge(
@@ -118,7 +215,6 @@ X_train.info()
 #         X_train.loc[:, clm] = x
 #         X_clm_dtypes[clm] = x.dtype
 
-X_train.fillna(X.median(), inplace=True)
 
 round(X_train.isna().sum().sum()/(X_train.shape[0]*X.shape[1]), 3)
 
@@ -127,10 +223,6 @@ y_train.value_counts()
 
 
 ######### prep test set
-X_test.dropna(0, how='all', inplace=True)
-X_test.dropna(1, how='all', inplace=True) 
-
-X_test['Var73'] = X_test['Var73'].astype('float64')
 features_cat_test = list(X_test.select_dtypes(include=['object']).columns)
 for clm in features_cat_test:
     X_test.loc[X_test[clm].value_counts(dropna=False)[X_test[clm]].values < X_test.shape[0] * 0.015, clm] = "RARE_VALUE"
@@ -194,40 +286,51 @@ X_test_pp = X_test.copy()
 features_num_train_nonbinary = X_train.iloc[:, :174].columns
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
+
+def standardize(train, test):
+    mean = np.mean(train, axis=0)
+    std = np.std(train, axis=0)+0.000001
+
+    X_train = (train - mean) / std
+    X_test = (test - mean) /std
+    return X_train, X_test
+
+X_train, X_test=standardize(X_train, X_test)
+
 X_train[features_num_train_nonbinary] = scaler.fit_transform(X_train[features_num_train_nonbinary])
 
 
 #### FEATURE SELECTION
-# # create random subset of training data to reduce duration of feature selection model optimizing
-# _, X_train_fs, _, y_train_fs = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=3992)
+# create random subset of training data to reduce duration of feature selection model optimizing
+_, X_train_fs, _, y_train_fs = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=3992)
 
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.model_selection import GridSearchCV
-# random_classifier = RandomForestClassifier()
-# parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
-# random_grid = GridSearchCV(random_classifier, parameters)
-# random_grid.fit(X_train_fs, np.array(y_train_fs['Churn']))
-# print("Optimal Hyperarams: ", random_grid.best_params_)
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
+random_classifier = RandomForestClassifier()
+parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
+random_grid = GridSearchCV(random_classifier, parameters)
+random_grid.fit(X_train_fs, np.array(y_train_fs['Churn']))
+print("Optimal Hyperarams: ", random_grid.best_params_)
 
-# rf_model = RandomForestClassifier(
-#     n_estimators=75,
-#     max_depth=5,
-#     max_features=None,   
-#     max_leaf_nodes=None,
-#     bootstrap=True,
-#     oob_score=True,
-#     n_jobs=-1,
-#     class_weight='balanced',
-#     random_state=3992,
-#     verbose=0,
-#     warm_start=False)
+rf_model = RandomForestClassifier(
+    n_estimators=75,
+    max_depth=5,
+    max_features=None,   
+    max_leaf_nodes=None,
+    bootstrap=True,
+    oob_score=True,
+    n_jobs=-1,
+    class_weight='balanced',
+    random_state=3992,
+    verbose=0,
+    warm_start=False)
 
-# # search features on full training set
-# rf_model.fit(X_train, np.array(y_train['Churn']))
+# search features on full training set
+rf_model.fit(X_train, np.array(y_train['Churn']))
 
 import pickle
-# pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
-rf_model = pickle.load(open('data/rf_model.sav', 'rb'))
+pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
+# rf_model = pickle.load(open('data/rf_model.sav', 'rb'))
 
 feature_importances = pd.DataFrame(rf_model.feature_importances_, index=X_train.columns, columns=['importance']).sort_values('importance', ascending=False)
 
@@ -241,6 +344,7 @@ feature_importances = pd.DataFrame(rf_model.feature_importances_, index=X_train.
 # fig.tight_layout()
 # fig.show()
 
+
 # reduce preserved training and test datasets to most important features
 most_imp_feat = feature_importances[:100].index.to_list()
 X_train = X_train_pp[most_imp_feat]
@@ -250,29 +354,17 @@ X_test = X_test_pp[most_imp_feat]
 # store all columns that are nonbinary, all columns which only have two values
 temp = []
 for clm in X_train.columns:
-    if X_train[clm].nunique() <> 2:
+    if X_train[clm].nunique() != 2:
         temp.append(clm)
-
-'''
-STOPPED HERE:
-'''
-
 X_train[temp] = scaler.fit_transform(X_train[temp])
+
 temp = []
 for clm in X_test.columns:
-    if X_test[clm].nunique() <> 2:
+    if X_test[clm].nunique() != 2:
         temp.append(clm)
 X_test[temp] = scaler.transform(X_test[temp])
 
-
-## PROBLEM! this currently also scales binary columns!
-X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
-X_test = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns)
-
-X_train.info()
-X_test.info()
-
-X_train.head()
+X_train, X_test = X_train.astype('float'), X_test.astype('float')
 
 ##################
 ##################
@@ -305,7 +397,6 @@ model.summary()
 
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 history = model.fit(X_train, y_train, batch_size=batch_size, epochs=8, verbose=1, validation_split=0.2)
-
 
 from sklearn import metrics
 y_pred = model.predict(X_test)
