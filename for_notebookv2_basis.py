@@ -191,16 +191,15 @@ X_train[features_num_train_nonbinary] = scaler.fit_transform(X_train[features_nu
 
 
 #### FEATURE SELECTION
-# create random subsets of training data for features selection to reduce computation time
-X_train_fs, _, y_train_fs, _ = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=3992)
-
+# create random subsets of training data for optimizing the feature selection mode to reduce computation time
+_, X_train_fs, _, y_train_fs = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=3992)
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 random_classifier = RandomForestClassifier()
 parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
-random_grid = GridSearchCV(random_classifier, parameters, random_state=3992)
-random_grid.fit(X_train, np.array(y_train['Churn']))
+random_grid = GridSearchCV(random_classifier, parameters)
+random_grid.fit(X_train_fs, np.array(y_train_fs['Churn']))
 print("Best HyperParameter: ", random_grid.best_params_)
 
 rf_model = RandomForestClassifier(
@@ -216,14 +215,14 @@ rf_model = RandomForestClassifier(
     verbose=0,
     warm_start=False)
 
-rf_model.fit(X=X_train, y=y_train)
+rf_model.fit(X=X_train, np.array(y_train['Churn']))
 
 import pickle
 pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
 rf_model = pickle.load(open('data/rf_model.sav', 'rb'))
 
 feature_importances = pd.DataFrame(rf_model.feature_importances_,
-                                   index = X_train.columns,
+                                   index = X_train_fs.columns,
                                     columns=['importance']).sort_values('importance', ascending=False)
 
 # std = np.std([rf_model.feature_importances_ for rf_model in rf_model.estimators_], axis=0)
