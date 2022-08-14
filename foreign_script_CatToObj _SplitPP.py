@@ -105,7 +105,6 @@ X_train[features_num_train] = scaler.fit_transform(X_train[features_num_train])
 
 # transform target variable
 y_train.replace(-1, 0, inplace=True)
-y_test.replace(-1, 0, inplace=True)
 
 X_train.shape
 X_test.shape
@@ -113,9 +112,9 @@ X_test.shape
 ##################################################################################################
 ##### APPLY DATA PREP TEST SET
 
-# missing value imputation: fit and apply imputers
-X_test[features_num_train] = imputer_nums.fit(X_test[features_num_train])
-X_test[features_cat_train] = imputer_cats.fit(X_test[features_cat_train])
+# missing value imputation: apply imputers
+X_test[features_num_train] = imputer_nums.transform(X_test[features_num_train])
+X_test[features_cat_train] = imputer_cats.transform(X_test[features_cat_train])
 X_test.isna().sum().sum()
 
 
@@ -127,25 +126,12 @@ cols = cols[195:] + cols[:195]
 X_test = enc_df[cols]
 
 
-X_train.info(verbose=True)
-
-
-
-# fit and apply scaler
-
-
+# apply scaler
+X_test[features_num_train] = scaler.transform(X_test[features_num_train])
 
 
 # transform target variable
-
-
-
-
-##################################################################################################
-#### EVALUATE MODEL
-
-
-
+y_test.replace(-1, 0, inplace=True)
 
 
 
@@ -234,7 +220,8 @@ X_train.info(verbose=True)
 ##################################################################################################
 
 
-### FEATURE SELECTION
+##################################################################################################
+#### FEATURE SELECTION
 X_train, X_cv, y_train, y_cv = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=42)
 
 random_classifier = RandomForestClassifier()
@@ -258,23 +245,27 @@ rf_model = RandomForestClassifier(
 
 rf_model.fit(X=X_train, y=y_train)
 
+import pickle
+pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
+# rf_model = pickle.load(open('data/rf_model.sav', 'rb'))
+
 feature_importances = pd.DataFrame(rf_model.feature_importances_,
                                    index = X_train.columns,
                                     columns=['importance']).sort_values('importance', ascending=False)
-most_imp_feat = feature_importances[:51].index.to_list()
+most_imp_feat = feature_importances[:101].index.to_list()
 
-train_data_1=train_data_1[most_imp_feat]
+X_train=X_train[most_imp_feat]
 
 
 # feature importance plot
-# std = np.std([rf_model.feature_importances_[:101] for rf_model in rf_model.estimators_], axis=0)
-# import matplotlib.pyplot as plt
-# fig, ax = plt.subplots()
-# feature_importances[:101].plot.bar(yerr=std, ax=ax)
-# ax.set_title("Feature importances using MDI")
-# ax.set_ylabel("Mean Decrease in Impurity (MDI)")
-# fig.tight_layout()
-# fig.show()
+std = np.std([rf_model.feature_importances_[:101] for rf_model in rf_model.estimators_], axis=0)
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots()
+feature_importances[:101].plot.bar(yerr=std, ax=ax)
+ax.set_title("Feature importances using MDI")
+ax.set_ylabel("Mean Decrease in Impurity (MDI)")
+fig.tight_layout()
+fig.show()
 
 
 ##################################################################################################
@@ -296,6 +287,10 @@ train_data_1=train_data_1[most_imp_feat]
 #     return X_train_stand, X_test_stand
 ##################################################################################################
 
+
+# # # # # # # # # # # # # # # # # # # # 
+# FROM HERE: RE-DO PREPROCESSING STEPS, but this time proceed from train and test datasets that only contain most importan features
+# # # # # # # # # # # # # # # # # # # # 
 
 X_train, X_test, y_train, y_test = train_test_split(train_data_1, churn, stratify=churn, test_size=0.2, random_state=42)
 temp = train_data_1.select_dtypes(include=['float']).columns.to_list()
