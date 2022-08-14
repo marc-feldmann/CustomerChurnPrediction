@@ -72,7 +72,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import make_column_transformer
 
 # EXPERIMENTAL APPROACH
-enc = make_column_transformer((OneHotEncoder(max_categories=20), features_cat_train), remainder='passthrough')
+enc = make_column_transformer((OneHotEncoder(max_categories=20, handle_unknown='ignore'), features_cat_train), remainder='passthrough')
 transformed = enc.fit_transform(X_train)
 enc_df = pd.DataFrame(transformed, columns=enc.get_feature_names())
 cols = enc_df.columns.tolist()
@@ -100,13 +100,15 @@ X_train.info(verbose=True)
 # fit and apply scaler
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
-X_train = pd.DataFrame(scaler.fit_transform(X_train[features_num_train], X_train.columns)
+X_train[features_num_train] = scaler.fit_transform(X_train[features_num_train])
+
 
 # transform target variable
 y_train.replace(-1, 0, inplace=True)
 y_test.replace(-1, 0, inplace=True)
 
-
+X_train.shape
+X_test.shape
 
 ##################################################################################################
 ##### APPLY DATA PREP TEST SET
@@ -118,11 +120,13 @@ X_test.isna().sum().sum()
 
 
 # Encode categorical features
-transformed = enc.fit_transform(X_train)
+transformed = enc.transform(X_test)
 enc_df = pd.DataFrame(transformed, columns=enc.get_feature_names())
 cols = enc_df.columns.tolist()
 cols = cols[195:] + cols[:195]
-X_train = enc_df[cols]
+X_test = enc_df[cols]
+
+
 X_train.info(verbose=True)
 
 
