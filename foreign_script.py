@@ -42,6 +42,13 @@ train.info()
 train['Var73']=train['Var73'].astype('float')
 
 
+# MY SCRIPT: add nan indicator columns
+for clm in train:
+    if train[clm].isna().sum() > 0:
+        train.insert(train.shape[1], f"{clm}_NaNInd", 0)
+        train[f"{clm}_NaNInd"] = np.where(pd.isnull(train[clm]), 1, 0)
+
+
 # changing the datatype of features
 DataVars = train.columns
 data_types = {Var: train[Var].dtype for Var in DataVars}
@@ -55,6 +62,7 @@ for Var in DataVars:
         x = train[Var].astype('category')
         train.loc[:, Var] = x
         data_types[Var] = x.dtype
+
 
 # storing all the float datatype features
 float_DataVars = [Var for Var in DataVars if data_types[Var] == float]
@@ -76,6 +84,7 @@ categorical_levels = train[categorical_DataVars].apply(lambda col: len(col.cat.c
 categorical_x_var_names = categorical_levels[categorical_levels > 10].index
 
 train.info()
+
 
 ##################################################################################################
 ##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
@@ -100,6 +109,7 @@ train.info()
 
 # train = replaceInfrequentLevels(train)
 ##################################################################################################
+
 
 train.info()
 train[categorical_DataVars] = train[categorical_DataVars].astype('object')
@@ -132,16 +142,19 @@ for i, clm in enumerate(categorical_DataVars):
         train_data_1[dum_clm].fillna(0, inplace=True)
     train_data_1.drop(clm, axis=1, inplace=True)
 
+
 ##################################################################################################
 ##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
 # train_data_1 = pd.get_dummies(train, columns=categorical_DataVars)
 ##################################################################################################
+
 
 X_train, X_test, y_train, y_test = train_test_split(train_data_1, churn, stratify=churn, test_size=0.2, random_state=42)
 
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
+
 
 ##################################################################################################
 ##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
@@ -156,6 +169,7 @@ X_train = scaler.fit_transform(X_train)
 # X_train, X_test=standardize(X_train, X_test)
 ##################################################################################################
 
+
 y_train.replace(-1, 0, inplace=True)
 y_test.replace(-1, 0, inplace=True)
 
@@ -163,7 +177,6 @@ X_train,X_cv, y_train, y_cv = train_test_split(X_train, y_train, stratify=y_trai
 
 
 ### FEATURE SELECTION
-
 random_classifier = RandomForestClassifier()
 parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
 random_grid = GridSearchCV(random_classifier, parameters, cv = 3)
