@@ -26,76 +26,115 @@ from keras.layers import LSTM, Activation, Dense, Dropout, Input, Embedding
 X = pd.read_table('data/orange_small_train.data')
 y = pd.read_table('data/orange_small_train_churn.labels', header = None,sep='\t').loc[:, 0].astype('category')
 
-y.value_counts().plot.bar()
+X.dropna(axis=0, how='all', inplace=True)
+X.dropna(axis=1, how='all', inplace=True)
+
+X.info(verbose=True)
+X['Var73']=X['Var73'].astype('float')
+
+# Replace all infrequent cat values with same value, store list of all replaced values
+features_cat = list(X.select_dtypes(include=['object']).columns)
+for feat in features_cat:
+    X.loc[X[feat].value_counts(dropna=False)[X[feat]].values < X.shape[0] * 0.015, feat] = 'RARE_VALUE'
+X[X == 'RARE_VALUE'].count().sum()
+
+# y.value_counts().plot.bar()
 # plt.ylabel('value')
 # plt.title('churn value for each class')
 # plt.show()
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
 
-
 ##################################################################################################
 ##### FIT AND APPLY DATA PREP ON TRAINING SET
-
+# (later:
+# - include NaN indicator clm generation
+# - fit infrequent value replacement to train, apply to test - probably with dictionary/loop)
 
 # imputation, encoding, scaling
 
-### 1) BRING INTO RIGHT ORDER, 2) adapt code
+# missing value imputation: fit and apply imputers
+from sklearn.impute import SimpleImputer
+imputer_nums = SimpleImputer(missing_values=np.nan, strategy='mean')
+features_num_train = list(X_train.select_dtypes(include=['float']).columns)
+X_train[features_num_train] = imputer_nums.fit_transform(X_train[features_num_train])
 
-# change datatypes
-train['Var73']=train['Var73'].astype('float')
+features_cat_train = list(X_train.select_dtypes(include=['object']).columns)
+imputer_cats = SimpleImputer(missing_values=np.nan, strategy='constant', fill_value='unknown')
+X_train[features_cat_train] = imputer_cats.fit_transform(X_train[features_cat_train])
 
-# remove all NaN rows and columns, store these rows and columns for later application to test data
-train.dropna(axis=0, how='all', inplace=True)
-train.dropna(axis=1, how='all', inplace=True)
+X_train.isna().sum().sum()
 
-# fit and apply missing value imputer
->>> from sklearn.impute import SimpleImputer
->>> imp_mean = SimpleImputer(missing_values=np.nan, strategy='mean')
->>> imp_mean.fit([[7, 2, 3], [4, np.nan, 6], [10, 5, 9]])
-
-train.fillna(train.median(), inplace=True)
-
-# Create NaN indicator columns and store these columns for test data preprocessing
-for clm in train:
-    if train[clm].isna().sum() > 0:
-        train.insert(train.shape[1], f"{clm}_NaNInd", 0)
-        train[f"{clm}_NaNInd"] = np.where(pd.isnull(train[clm]), 1, 0)
-
-# Replace all infrequent cat values with same value, store list of all replaced values
-features_cat = list(train.select_dtypes(include=['object']).columns)
-for clm in features_cat:
-    train.loc[train[clm].value_counts(dropna=False)[train[clm]].values < train.shape[0] * 0.015, clm] = 'RARE_VALUE'
-train[train == 'RARE_VALUE'].count().sum()
 
 # Encode categorical features
-train_data_1 = train.copy()
-for i, clm in enumerate(features_cat):
-    print("Encoding categorical variable", i+1, "/ ", len(features_cat))
-    most_freq_vals = train[clm].value_counts()[:20].index.tolist()
-    dummy_clms = pd.get_dummies(train[clm].loc[train[clm].isin(most_freq_vals)], prefix=clm)
-    train_data_1 = pd.merge(
-        train_data_1,
-        dummy_clms,
-        left_index=True,
-        right_index=True,
-        how='outer')
-    for dum_clm in train_data_1[dummy_clms.columns]:
-        train_data_1[dum_clm].fillna(0, inplace=True)
-    train_data_1.drop(clm, axis=1, inplace=True)
+## rebuild with sklearn OHE - bc can be easier applied to test data. make sure outputs are same on train
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import make_column_transformer
+
+# EXPERIMENTAL APPROACH
+enc = make_column_transformer((OneHotEncoder(max_categories=20), features_cat_train), remainder='passthrough')
+transformed = enc.fit_transform(X_train)
+enc_df = pd.DataFrame(transformed, columns=enc.get_feature_names())
+cols = enc_df.columns.tolist()
+cols = cols[195:] + cols[:195]
+X_train = enc_df[cols]
+X_train.info(verbose=True)
+
+
+# EARLIER APPROACH
+# for i, clm in enumerate(features_cat_train):
+#     print("Encoding categorical variable", i+1, "/ ", len(features_cat_train))
+#     most_freq_vals = X_train[clm].value_counts()[:20].index.tolist()
+#     dummy_clms = pd.get_dummies(X_train[clm].loc[X_train[clm].isin(most_freq_vals)], prefix=clm)
+#     X_train = pd.merge(
+#         X_train,
+#         dummy_clms,
+#         left_index=True,
+#         right_index=True,
+#         how='outer')
+#     for dum_clm in X_train[dummy_clms.columns]:
+#         X_train[dum_clm].fillna(0, inplace=True)
+#     X_train.drop(clm, axis=1, inplace=True)
+
 
 # fit and apply scaler
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
+X_train = pd.DataFrame(scaler.fit_transform(X_train[features_num_train], X_train.columns)
 
 # transform target variable
 y_train.replace(-1, 0, inplace=True)
 y_test.replace(-1, 0, inplace=True)
 
 
+
 ##################################################################################################
 ##### APPLY DATA PREP TEST SET
+
+# missing value imputation: fit and apply imputers
+X_test[features_num_train] = imputer_nums.fit(X_test[features_num_train])
+X_test[features_cat_train] = imputer_cats.fit(X_test[features_cat_train])
+X_test.isna().sum().sum()
+
+
+# Encode categorical features
+transformed = enc.fit_transform(X_train)
+enc_df = pd.DataFrame(transformed, columns=enc.get_feature_names())
+cols = enc_df.columns.tolist()
+cols = cols[195:] + cols[:195]
+X_train = enc_df[cols]
+X_train.info(verbose=True)
+
+
+
+# fit and apply scaler
+
+
+
+
+# transform target variable
+
+
 
 
 ##################################################################################################
