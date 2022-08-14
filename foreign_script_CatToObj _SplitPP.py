@@ -43,7 +43,7 @@ X[X == 'RARE_VALUE'].count().sum()
 # plt.title('churn value for each class')
 # plt.show()
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=3992)
 
 ##################################################################################################
 ##### FIT AND APPLY DATA PREP ON TRAINING SET
@@ -67,11 +67,8 @@ X_train.isna().sum().sum()
 
 
 # Encode categorical features
-## rebuild with sklearn OHE - bc can be easier applied to test data. make sure outputs are same on train
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import make_column_transformer
-
-# EXPERIMENTAL APPROACH
 enc = make_column_transformer((OneHotEncoder(max_categories=20, handle_unknown='ignore'), features_cat_train), remainder='passthrough')
 transformed = enc.fit_transform(X_train)
 enc_df = pd.DataFrame(transformed, columns=enc.get_feature_names())
@@ -222,12 +219,12 @@ y_test.replace(-1, 0, inplace=True)
 
 ##################################################################################################
 #### FEATURE SELECTION
-X_train, X_cv, y_train, y_cv = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=42)
+X_train_fs, X_cv_fs, y_train_fs, y_cv_fs = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=42)
 
 random_classifier = RandomForestClassifier()
 parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
 random_grid = GridSearchCV(random_classifier, parameters, cv = 3)
-random_grid.fit(X_cv, y_cv)
+random_grid.fit(X_cv_fs, y_cv_fs)
 print("Best HyperParameter: ",random_grid.best_params_)
 
 rf_model = RandomForestClassifier(
@@ -243,19 +240,14 @@ rf_model = RandomForestClassifier(
     verbose=0,
     warm_start=False)
 
-rf_model.fit(X=X_train, y=y_train)
+rf_model.fit(X=X_train_fs, y=y_train_fs)
 
 import pickle
 pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
 # rf_model = pickle.load(open('data/rf_model.sav', 'rb'))
 
-feature_importances = pd.DataFrame(rf_model.feature_importances_,
-                                   index = X_train.columns,
-                                    columns=['importance']).sort_values('importance', ascending=False)
-most_imp_feat = feature_importances[:101].index.to_list()
-
-X_train=X_train[most_imp_feat]
-
+feature_importances = pd.DataFrame(rf_model.feature_importances_, index = X_train.columns, columns=['importance']).sort_values('importance', ascending=False)
+most_imp_feats = feature_importances[:101].index.to_list()
 
 # feature importance plot
 std = np.std([rf_model.feature_importances_[:101] for rf_model in rf_model.estimators_], axis=0)
@@ -292,10 +284,12 @@ fig.show()
 # FROM HERE: RE-DO PREPROCESSING STEPS, but this time proceed from train and test datasets that only contain most importan features
 # # # # # # # # # # # # # # # # # # # # 
 
-X_train, X_test, y_train, y_test = train_test_split(train_data_1, churn, stratify=churn, test_size=0.2, random_state=42)
-temp = train_data_1.select_dtypes(include=['float']).columns.to_list()
-X_train[temp] = scaler.fit_transform(X_train[temp])
-X_test[temp] = scaler.transform(X_test[temp])
+# (same) split
+# fit and apply to training data imputation, encoding, scaling
+# fit to test data
+
+X_train = X_train[most_imp_feats]
+X_test = X_test[most_imp_feats]
 
 
 ##################################################################################################
@@ -303,10 +297,8 @@ X_test[temp] = scaler.transform(X_test[temp])
 # X_train, X_test=standardize_data(X_train, X_test)
 ##################################################################################################
 
-
 y_train.replace(-1, 0, inplace=True)
 y_test.replace(-1, 0, inplace=True)
-
 
 output_dim = 1
 input_dim = X_train.shape[1]
@@ -326,7 +318,7 @@ model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy']
 history = model.fit(X_train.values, np.array(y_train.values), batch_size=batch_size, epochs=8, verbose=1, validation_split=0.2)
 
 y_pred = model.predict(X_test)
-y_pred = pd.DataFrame(y_pred, columns = ['churn'])
+y_pred = pd.DataFrame(y_pred, columns=['churn'])
 print("ROC-AUC score is {}".format(metrics.roc_auc_score(y_test, y_pred)))
 
 precision, recall, thresholds = metrics.precision_recall_curve(y_test, y_pred)
@@ -339,3 +331,6 @@ pyplot.xlabel('Recall')
 pyplot.ylabel('Precision')
 pyplot.legend()
 pyplot.show()
+
+X_train.shape
+
