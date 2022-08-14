@@ -219,7 +219,7 @@ y_test.replace(-1, 0, inplace=True)
 
 ##################################################################################################
 #### FEATURE SELECTION
-X_train_fs, X_cv_fs, y_train_fs, y_cv_fs = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=42)
+X_train_fs, X_cv_fs, y_train_fs, y_cv_fs = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=3992)
 
 random_classifier = RandomForestClassifier()
 parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
@@ -236,7 +236,7 @@ rf_model = RandomForestClassifier(
     oob_score=True,
     n_jobs=-1,
     class_weight='balanced',
-    random_state=42,
+    random_state=3992,
     verbose=0,
     warm_start=False)
 
@@ -247,7 +247,6 @@ pickle.dump(rf_model, open('data/rf_model.sav', 'wb'))
 # rf_model = pickle.load(open('data/rf_model.sav', 'rb'))
 
 feature_importances = pd.DataFrame(rf_model.feature_importances_, index = X_train.columns, columns=['importance']).sort_values('importance', ascending=False)
-most_imp_feats = feature_importances[:101].index.to_list()
 
 # feature importance plot
 std = np.std([rf_model.feature_importances_[:101] for rf_model in rf_model.estimators_], axis=0)
@@ -259,6 +258,9 @@ ax.set_ylabel("Mean Decrease in Impurity (MDI)")
 fig.tight_layout()
 fig.show()
 
+most_imp_feats = feature_importances[:46].index.to_list()
+X_train = X_train[most_imp_feats]
+X_test = X_test[most_imp_feats]
 
 ##################################################################################################
 ##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
@@ -280,42 +282,29 @@ fig.show()
 ##################################################################################################
 
 
-# # # # # # # # # # # # # # # # # # # # 
-# FROM HERE: RE-DO PREPROCESSING STEPS, but this time proceed from train and test datasets that only contain most importan features
-# # # # # # # # # # # # # # # # # # # # 
-
-# (same) split
-# fit and apply to training data imputation, encoding, scaling
-# fit to test data
-
-X_train = X_train[most_imp_feats]
-X_test = X_test[most_imp_feats]
-
-
 ##################################################################################################
 ##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
 # X_train, X_test=standardize_data(X_train, X_test)
 ##################################################################################################
 
+X_train.head()
+X_test.head()
+
 y_train.replace(-1, 0, inplace=True)
 y_test.replace(-1, 0, inplace=True)
 
-output_dim = 1
 input_dim = X_train.shape[1]
-
-batch_size = 512
-nb_epoch = 50
 
 model = Sequential()
 model.add(Dense(512, activation='relu', input_shape=(input_dim,), kernel_initializer='he_normal'))
 model.add(Dropout(0.2))
 model.add(Dense(256, activation='relu', kernel_initializer='he_normal') )
 model.add(Dropout(0.8))
-model.add(Dense(output_dim, activation='sigmoid'))
+model.add(Dense(1, activation='sigmoid'))
 model.summary()
 
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-history = model.fit(X_train.values, np.array(y_train.values), batch_size=batch_size, epochs=8, verbose=1, validation_split=0.2)
+history = model.fit(X_train.values, np.array(y_train.values), batch_size=512, epochs=50, verbose=1, validation_split=0.2)
 
 y_pred = model.predict(X_test)
 y_pred = pd.DataFrame(y_pred, columns=['churn'])
@@ -332,5 +321,4 @@ pyplot.ylabel('Precision')
 pyplot.legend()
 pyplot.show()
 
-X_train.shape
 
