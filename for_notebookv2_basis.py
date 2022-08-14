@@ -52,51 +52,7 @@ X[X == 'RARE_VALUE'].count().sum()
 print(X)
 # results in 481901 RARE VALUE replacements
 
-### the other function:
-##prep:
-DataVars = X.columns
-data_types = {Var: X[Var].dtype for Var in DataVars}
-for Var in DataVars:
-    if data_types[Var] != float:
-        x = X[Var].astype('category')
-        X.loc[:, Var] = x
-        data_types[Var] = x.dtype
-
-categorical_DataVars = [Var for Var in DataVars if data_types[Var] != float]
-categorical_levels = X[categorical_DataVars].apply(lambda col: len(col.cat.categories))
-categorical_x_var_names = categorical_levels[categorical_levels > 10].index
-
-##functioN;
-def replaceInfrequentLevels(data, val=0.015):
-    collapsed_categories = {}
-    for categorical_x_var_name in categorical_x_var_names:
-        x = data[categorical_x_var_name].copy()
-        for category in x.cat.categories:
-            matching_rows_yesno = x == category
-            if matching_rows_yesno.sum() < val * data.shape[0]: #wenn kategorie weniger als 1.5% der reihen belegt
-                if categorical_x_var_name in collapsed_categories:
-                    collapsed_categories[categorical_x_var_name].append(category)
-                else:
-                    collapsed_categories[categorical_x_var_name] = [category]
-                if 'RARE_VALUE' not in data[categorical_x_var_name].cat.categories:
-                    data[categorical_x_var_name].cat.add_categories('RARE_VALUE', inplace=True)
-                data.loc[matching_rows_yesno, categorical_x_var_name] = 'RARE_VALUE'
-                data[categorical_x_var_name].cat.remove_categories(category, inplace=True)
-    return data
-
-X = replaceInfrequentLevels(X)
-X[X == 'RARE_VALUE'].count().sum()
-print(X)
-
-X.info()
-
-for categorical_var_name in categorical_x_var_names:
-    X[categorical_var_name].cat.add_categories("unknown_"+categorical_var_name, inplace=True)
-    X[categorical_var_name].fillna("unknown_"+categorical_var_name, inplace=True)
-
-X['Var228'].value_counts()
 X.fillna(X.median(), inplace=True)
-# results in 481901 RARE VALUE replacements
 
 ##################
 
