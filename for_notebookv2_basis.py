@@ -15,18 +15,6 @@ y = pd.read_table('data/orange_small_train_churn.labels', header=None, names=['C
 # X.head()
 # X.info()
 
-# # change feature data types to float (nums) or object (cats)
-# X_clm_dtypes = {clm: X[clm].dtype for clm in X.columns}
-# for clm in X.columns:
-#     if X_clm_dtypes[clm] == int:
-#         x = X[clm].astype(float)
-#         X.loc[:, clm] = x
-#         X_clm_dtypes[clm] = x.dtype
-#     elif X_clm_dtypes[clm] != float:
-#         x = X[clm].astype('object')
-#         X.loc[:, clm] = x
-#         X_clm_dtypes[clm] = x.dtype
-
 # round(X.isna().sum().sum()/(X.shape[0]*X.shape[1]), 3)
 
 # import matplotlib.pyplot as plt
@@ -43,68 +31,12 @@ X['Var73'] = X['Var73'].astype('float')
 
 X.info()
 
-################## TEST AND  COMPARE TO OTHER GUYS FUNCTION
-features_cat = list(X.select_dtypes(include=['object']).columns)
-for clm in features_cat:
-    X.loc[X[clm].value_counts(dropna=False)[X[clm]].values < X.shape[0] * 0.015, clm] = "RARE_VALUE"
-
-X[X == 'RARE_VALUE'].count().sum()
-print(X)
-# results in 481901 RARE VALUE replacements
-
-X.fillna(X.median(), inplace=True)
-
-##################
-
-X1 = pd.get_dummies(X, columns=['Var191',
- 'Var192',
- 'Var193',
- 'Var194',
- 'Var195',
- 'Var196',
- 'Var197',
- 'Var198',
- 'Var199',
- 'Var200',
- 'Var201',
- 'Var202',
- 'Var203',
- 'Var204',
- 'Var205',
- 'Var206',
- 'Var207',
- 'Var208',
- 'Var210',
- 'Var211',
- 'Var212',
- 'Var213',
- 'Var214',
- 'Var215',
- 'Var216',
- 'Var217',
- 'Var218',
- 'Var219',
- 'Var220',
- 'Var221',
- 'Var222',
- 'Var223',
- 'Var224',
- 'Var225',
- 'Var226',
- 'Var227',
- 'Var228',
- 'Var229'])
-
-X_train, X_test, y_train, y_test = train_test_split(X1, y, stratify=y, test_size=0.2, random_state=3992)
-
-
 ##################
 
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=3992)
 
 X_train.fillna(X.median(), inplace=True)
-
 
 # temp = X_train.isna().sum()/(X_train.shape[0])
 # plt.bar(range(len(temp)), sorted(temp), color='blue', alpha=0.65)
@@ -117,9 +49,6 @@ features_cat_train = list(X_train.select_dtypes(include=['object']).columns)
 for clm in features_cat_train:
     X_train.loc[X_train[clm].value_counts(dropna=False)[X_train[clm]].values < X_train.shape[0] * 0.015, clm] = "RARE_VALUE"
 
-
-##################
-##################
 
 for iteration, clm in enumerate(features_cat_train):
     print("Encoding categorical variable (training set)", iteration+1, "/ ", len(features_cat_train))
@@ -135,21 +64,8 @@ for iteration, clm in enumerate(features_cat_train):
         X_train[dum_clm].fillna(0, inplace=True)
     X_train.drop(clm, axis=1, inplace=True)
 
-##################
-##################
 
 X_train.info()
-
-# X_clm_dtypes = {clm: X_train[clm].dtype for clm in X_train.columns}
-# for clm in X_train.columns:
-#     if X_clm_dtypes[clm] == int:
-#         x = X_train[clm].astype(float)
-#         X_train.loc[:, clm] = x
-#         X_clm_dtypes[clm] = x.dtype
-#     elif X_clm_dtypes[clm] != float:
-#         x = X_train[clm].astype('object')
-#         X_train.loc[:, clm] = x
-#         X_clm_dtypes[clm] = x.dtype
 
 # insert NaN indicator columns
 import numpy as np
@@ -159,18 +75,6 @@ for clm in X_train:
         X_train[f"{clm}_NaNInd"] = np.where(np.isnan(X_train[clm]), 1, 0)
 
 X_train.info()
-
-# X_clm_dtypes = {clm: X_train[clm].dtype for clm in X_train.columns}
-# for clm in X_train.columns:
-#     if X_clm_dtypes[clm] == int:
-#         x = X_train[clm].astype(float)
-#         X_train.loc[:, clm] = x
-#         X_clm_dtypes[clm] = x.dtype
-#     elif X_clm_dtypes[clm] != float:
-#         x = X_train[clm].astype('object')
-#         X_train.loc[:, clm] = x
-#         X_clm_dtypes[clm] = x.dtype
-
 
 round(X_train.isna().sum().sum()/(X_train.shape[0]*X.shape[1]), 3)
 
@@ -184,11 +88,7 @@ for clm in features_cat_test:
     X_test.loc[X_test[clm].value_counts(dropna=False)[X_test[clm]].values < X_test.shape[0] * 0.015, clm] = "RARE_VALUE"
 
 for iteration, clm in enumerate(features_cat_test):
-    print(
-        "Encoding categorical variable (test set)",
-        iteration + 1,
-        "/ ",
-        len(features_cat_test))
+    print("Encoding categorical variable (test set)", iteration + 1, "/ ", len(features_cat_test))
     most_freq_vals = X_test[clm].value_counts()[:20].index.tolist()
     dummy_clms = pd.get_dummies(X_test[clm].loc[X_test[clm].isin(most_freq_vals)], prefix=clm)
     X_test = pd.merge(
@@ -242,17 +142,6 @@ X_test_pp = X_test.copy()
 features_num_train_nonbinary = X_train.iloc[:, :174].columns
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
-
-def standardize(train, test):
-    mean = np.mean(train, axis=0)
-    std = np.std(train, axis=0)+0.000001
-
-    X_train = (train - mean) / std
-    X_test = (test - mean) /std
-    return X_train, X_test
-
-X_train, X_test=standardize(X_train, X_test)
-
 X_train[features_num_train_nonbinary] = scaler.fit_transform(X_train[features_num_train_nonbinary])
 
 
