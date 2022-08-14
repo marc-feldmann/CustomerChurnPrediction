@@ -55,47 +55,31 @@ for clm in train:
         train[f"{clm}_NaNInd"] = np.where(pd.isnull(train[clm]), 1, 0)
 
 
-# changing the datatype of features
-DataVars = train.columns
-data_types = {Var: train[Var].dtype for Var in DataVars}
-
-for Var in DataVars:
-    if data_types[Var] == int:
-        x = train[Var].astype(float)
-        train.loc[:, Var] = x
-        data_types[Var] = x.dtype
-    elif data_types[Var] != float:
-        x = train[Var].astype('category')
-        train.loc[:, Var] = x
-        data_types[Var] = x.dtype
-
-
-# storing all the float datatype features
-float_DataVars = [Var for Var in DataVars if data_types[Var] == float]
-
-float_x_means = train.mean()
-
-for Var in float_DataVars:
-    x = train[Var]
-    mediancol=train[Var].mean()
-    isThereMissing = x.isnull()
-    if isThereMissing.sum() > 0:
-        train.loc[isThereMissing.tolist(), Var] = float_x_means[Var]
-
-
-# storing all the categpry features
-DataVars = train.columns
-categorical_DataVars = [Var for Var in DataVars if data_types[Var] != float]
-
+# mean imputation
 train.info()
-features_cat = list(train.select_dtypes(include=['object']).columns)
+train.fillna(train.median(), inplace=True)
 
 
 ##################################################################################################
 ##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
+# features_num = list(train.select_dtypes(exclude=['object']).columns)
+# float_x_means = train.mean()
+# for feat in features_num:
+#     x = train[feat]
+#     mediancol=train[feat].mean()
+#     isThereMissing = x.isnull()
+#     if isThereMissing.sum() > 0:
+#         train.loc[isThereMissing.tolist(), feat] = float_x_means[feat]
+##################################################################################################
+
+
+# storing all the categpry features
+features_cat = list(train.select_dtypes(include=['object']).columns)
+
+train.info()
+
 # categorical_levels = train[categorical_DataVars].apply(lambda col: len(col.cat.categories))
 # categorical_x_var_names = categorical_levels[categorical_levels > 10].index
-##################################################################################################
 
 
 ##################################################################################################
@@ -123,12 +107,11 @@ features_cat = list(train.select_dtypes(include=['object']).columns)
 ##################################################################################################
 
 
-train.info()
-train[categorical_DataVars] = train[categorical_DataVars].astype('object')
-for clm in categorical_DataVars:
+train[features_cat] = train[features_cat].astype('object')
+for clm in features_cat:
     train.loc[train[clm].value_counts(dropna=False)[train[clm]].values < train.shape[0] * 0.015, clm] = 'RARE_VALUE'
 train[train == 'RARE_VALUE'].count().sum()
-train[categorical_DataVars] = train[categorical_DataVars].astype('category')
+train[features_cat] = train[features_cat].astype('category')
 
 
 ##################################################################################################
@@ -144,8 +127,8 @@ train[categorical_DataVars] = train[categorical_DataVars].astype('category')
 
 
 train_data_1 = train.copy()
-for i, clm in enumerate(categorical_DataVars):
-    print("Encoding categorical variable", i+1, "/ ", len(categorical_DataVars))
+for i, clm in enumerate(features_cat):
+    print("Encoding categorical variable", i+1, "/ ", len(features_cat))
     most_freq_vals = train[clm].value_counts()[:20].index.tolist()
     dummy_clms = pd.get_dummies(train[clm].loc[train[clm].isin(most_freq_vals)], prefix=clm)
     train_data_1 = pd.merge(
@@ -222,6 +205,17 @@ most_imp_feat = feature_importances[:51].index.to_list()
 train_data_1=train_data_1[most_imp_feat]
 
 
+# feature importance plot
+# std = np.std([rf_model.feature_importances_[:101] for rf_model in rf_model.estimators_], axis=0)
+# import matplotlib.pyplot as plt
+# fig, ax = plt.subplots()
+# feature_importances[:101].plot.bar(yerr=std, ax=ax)
+# ax.set_title("Feature importances using MDI")
+# ax.set_ylabel("Mean Decrease in Impurity (MDI)")
+# fig.tight_layout()
+# fig.show()
+
+
 ##################################################################################################
 ##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
 # lst1=[]
@@ -247,10 +241,16 @@ temp = train_data_1.select_dtypes(include=['float']).columns.to_list()
 X_train[temp] = scaler.fit_transform(X_train[temp])
 X_test[temp] = scaler.transform(X_test[temp])
 
+
+##################################################################################################
+##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
 # X_train, X_test=standardize_data(X_train, X_test)
+##################################################################################################
+
 
 y_train.replace(-1, 0, inplace=True)
 y_test.replace(-1, 0, inplace=True)
+
 
 output_dim = 1
 input_dim = X_train.shape[1]
