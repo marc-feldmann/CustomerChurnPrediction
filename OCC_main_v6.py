@@ -387,6 +387,8 @@ history = model.fit(
 ##################################################################################################
 #### MODEL TESTING
 
+y_test.shape
+
 y_pred = model.predict(X_test)
 y_pred = pd.DataFrame(y_pred, columns=['churn'])
 print("ROC-AUC score is {}".format(sklearn.metrics.roc_auc_score(y_test, y_pred)))
@@ -394,12 +396,15 @@ print("ROC-AUC score is {}".format(sklearn.metrics.roc_auc_score(y_test, y_pred)
 precision, recall, thresholds = sklearn.metrics.precision_recall_curve(y_test, y_pred)
 auc = sklearn.metrics.auc(recall, precision)
 from matplotlib import pyplot
-no_skill = len(y_test[y_test==1]) / len(y_test)
-pyplot.plot([0, 1], [no_skill, no_skill], linestyle='--', label='Churn Random Guessing')
-pyplot.plot(recall, precision, marker='.', label='ANN Churn Predictor')
-pyplot.xlabel('Recall')
-pyplot.ylabel('Precision')
-pyplot.legend()
-pyplot.show()
+# no_skill = len(y_test[y_test==1]) / len(y_test)
+plt.plot(0.0778, 0.0823, marker="o", markersize=20, markeredgecolor="red", markerfacecolor="green", label='Churn Informed Guessing')
+# plt.plot([0.4286, 0.4286], [0.375, 0.375], linestyle='--', label='Churn Random Guessing')
+plt.plot(recall, precision, marker='.', label='ANN Churn Predictor')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.xlim(0, 1)
+plt.ylim(0, 1)
+plt.legend()
+plt.show()
 
 
