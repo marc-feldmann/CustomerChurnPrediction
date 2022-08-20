@@ -1,3 +1,7 @@
+'''
+This version, v6, reflects the major script revision in August. It will be the basis for revisiing the notebook "report".
+'''
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
