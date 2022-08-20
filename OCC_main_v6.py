@@ -26,6 +26,15 @@ from keras.layers import Dense, Input, Embedding, Lambda, Dropout, Activation, R
 from keras.layers import LSTM, Activation, Dense, Dropout, Input, Embedding
 
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+from numpy.random import seed
+import tensorflow as tf
+seed(3992)
+tf.random.set_seed(3992)
+
+
 ##### SPLIT DATA
 X = pd.read_table('data/orange_small_train.data')
 y = pd.read_table('data/orange_small_train_churn.labels', header = None,sep='\t').loc[:, 0].astype('category')
@@ -36,11 +45,13 @@ X.dropna(axis=1, how='all', inplace=True)
 X.info(verbose=True)
 X['Var73']=X['Var73'].astype('float')
 
+
 # Replace all infrequent cat values with same value, store list of all replaced values
 features_cat = list(X.select_dtypes(include=['object']).columns)
 for feat in features_cat:
-    X.loc[X[feat].value_counts(dropna=False)[X[feat]].values < X.shape[0] * 0.015, feat] = 'RARE_VALUE'
+    X.loc[X[feat].value_counts(dropna=False)[X[feat]].values < X.shape[0] * 0.02, feat] = 'RARE_VALUE'
 X[X == 'RARE_VALUE'].count().sum()
+
 
 # y.value_counts().plot.bar()
 # plt.ylabel('value')
@@ -56,6 +67,14 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=
 # - fit infrequent value replacement to train, apply to test - probably with dictionary/loop)
 
 # imputation, encoding, scaling
+
+
+# insert NaN indicator columns
+for clm in X_train:
+    if X_train[clm].isna().sum() > 0:
+        X_train.insert(X_train.shape[1], f"{clm}_NaNInd", 0)
+        X_train[f"{clm}_NaNInd"] = np.where(pd.isnull(X_train[clm]), 1, 0)
+
 
 # missing value imputation: fit and apply imputers
 from sklearn.impute import SimpleImputer
@@ -77,25 +96,9 @@ enc = make_column_transformer((OneHotEncoder(max_categories=20, handle_unknown='
 transformed = enc.fit_transform(X_train)
 enc_df = pd.DataFrame(transformed, columns=enc.get_feature_names())
 cols = enc_df.columns.tolist()
-cols = cols[195:] + cols[:195]
+cols = cols[168:] + cols[:168]
 X_train = enc_df[cols]
 X_train.info(verbose=True)
-
-
-# EARLIER APPROACH
-# for i, clm in enumerate(features_cat_train):
-#     print("Encoding categorical variable", i+1, "/ ", len(features_cat_train))
-#     most_freq_vals = X_train[clm].value_counts()[:20].index.tolist()
-#     dummy_clms = pd.get_dummies(X_train[clm].loc[X_train[clm].isin(most_freq_vals)], prefix=clm)
-#     X_train = pd.merge(
-#         X_train,
-#         dummy_clms,
-#         left_index=True,
-#         right_index=True,
-#         how='outer')
-#     for dum_clm in X_train[dummy_clms.columns]:
-#         X_train[dum_clm].fillna(0, inplace=True)
-#     X_train.drop(clm, axis=1, inplace=True)
 
 
 # fit and apply scaler
@@ -113,6 +116,14 @@ X_test.shape
 ##################################################################################################
 ##### APPLY DATA PREP TEST SET
 
+
+# insert NaN indicator columns
+for clm in X_test:
+    if X_test[clm].isna().sum() > 0:
+        X_test.insert(X_test.shape[1], f"{clm}_NaNInd", 0)
+        X_test[f"{clm}_NaNInd"] = np.where(pd.isnull(X_test[clm]), 1, 0)
+
+
 # missing value imputation: apply imputers
 X_test[features_num_train] = imputer_nums.transform(X_test[features_num_train])
 X_test[features_cat_train] = imputer_cats.transform(X_test[features_cat_train])
@@ -123,7 +134,7 @@ X_test.isna().sum().sum()
 transformed = enc.transform(X_test)
 enc_df = pd.DataFrame(transformed, columns=enc.get_feature_names())
 cols = enc_df.columns.tolist()
-cols = cols[195:] + cols[:195]
+cols = cols[168:] + cols[:168]
 X_test = enc_df[cols]
 
 
@@ -133,92 +144,6 @@ X_test[features_num_train] = scaler.transform(X_test[features_num_train])
 
 # transform target variable
 y_test.replace(-1, 0, inplace=True)
-
-
-
-##################################################################################################
-##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
-# for i in train.columns:
-#     if train[i].isnull().sum()/len(train)>=1.0:
-#         train.drop(i,axis=1,inplace=True)
-##################################################################################################
-
-
-##################################################################################################
-##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
-# features_num = list(train.select_dtypes(exclude=['object']).columns)
-# float_x_means = train.mean()
-# for feat in features_num:
-#     x = train[feat]
-#     mediancol=train[feat].mean()
-#     isThereMissing = x.isnull()
-#     if isThereMissing.sum() > 0:
-#         train.loc[isThereMissing.tolist(), feat] = float_x_means[feat]
-##################################################################################################
-
-
-##################################################################################################
-##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
-# categorical_levels = train[categorical_DataVars].apply(lambda col: len(col.cat.categories))
-# categorical_x_var_names = categorical_levels[categorical_levels > 10].index
-##################################################################################################
-
-
-##################################################################################################
-##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
-# the following function replaces all categories in all cat variables with more than 10 categories by 'OTHER'
-# this significantly reduces variation in the dataset - makes it easier for ANN to learn?
-# def replaceInfrequentLevels(data, val=0.015):
-#     collapsed_categories = {}
-#     for categorical_x_var_name in categorical_x_var_names:
-#         x = data[categorical_x_var_name].copy()
-#         for category in x.cat.categories:
-#             matching_rows_yesno = x == category
-#             if matching_rows_yesno.sum() < val * data.shape[0]: #wenn kategorie weniger als 1.5% der reihen belegt
-#                 if categorical_x_var_name in collapsed_categories:
-#                     collapsed_categories[categorical_x_var_name].append(category)
-#                 else:
-#                     collapsed_categories[categorical_x_var_name] = [category]
-#                 if 'OTHER' not in data[categorical_x_var_name].cat.categories:
-#                     data[categorical_x_var_name].cat.add_categories('OTHER', inplace=True)
-#                 data.loc[matching_rows_yesno, categorical_x_var_name] = 'OTHER'
-#                 data[categorical_x_var_name].cat.remove_categories(category, inplace=True)
-#     return data
-
-# train = replaceInfrequentLevels(train)
-##################################################################################################
-
-
-##################################################################################################
-##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
-# categorical_x_nb_levels = train[categorical_x_var_names].apply(lambda col: len(col.cat.categories))
-# print("Number of unique values within categorical features after preprocessing:")
-# categorical_x_nb_levels
-
-# for categorical_var_name in categorical_x_var_names:
-#     train[categorical_var_name].cat.add_categories("unknown_"+categorical_var_name, inplace=True)
-#     train[categorical_var_name].fillna("unknown_"+categorical_var_name, inplace=True)
-##################################################################################################
-
-
-##################################################################################################
-##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
-# train_data_1 = pd.get_dummies(train, columns=categorical_DataVars)
-##################################################################################################
-
-
-##################################################################################################
-##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
-# def standardize(train, test):
-#     mean = np.mean(train, axis=0)
-#     std = np.std(train, axis=0)+0.000001
-
-#     X_train = (train - mean) / std
-#     X_test = (test - mean) /std
-#     return X_train, X_test
-
-# X_train, X_test=standardize(X_train, X_test)
-##################################################################################################
 
 
 ##################################################################################################
@@ -266,56 +191,208 @@ most_imp_feats = feature_importances[:46].index.to_list()
 X_train = X_train[most_imp_feats]
 X_test = X_test[most_imp_feats]
 
-##################################################################################################
-##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
-# lst1=[]
-# for i in train_data_1.columns:
-#     if train_data_1[i].dtypes==float:
-#         lst1.append(i)
-
-# from sklearn.preprocessing import StandardScaler
-# def standardize_data(X_train, X_test):
-#     float_feats_train = X_train[lst1]
-#     float_feats_test = X_test[lst1]
-#     scaler = StandardScaler()
-#     X_train_stand = pd.DataFrame(scaler.fit_transform(float_feats_train), columns = lst1, index = X_train.index)
-#     X_test_stand = pd.DataFrame(scaler.transform(float_feats_test), columns = lst1, index = X_test.index)
-#     X_train_stand = pd.merge(X_train_stand, X_train.loc[:, ~X_train.columns.isin(lst1)], left_index=True, right_index=True)
-#     X_test_stand = pd.merge(X_test_stand, X_test.loc[:, ~X_test.columns.isin(lst1)], left_index=True, right_index=True)
-#     return X_train_stand, X_test_stand
-##################################################################################################
-
 
 ##################################################################################################
-##### CHECKED: THESE CODE BITS CAN INDIVIDUALLY CONSIDERED NOT BE THE SCRIPTS 'SECRET SAUCE' #####
-# X_train, X_test=standardize_data(X_train, X_test)
+#### MODEL SELECTION
+
+### EXPERIMENTAL ANN ARCHITECTURE
+from keras.wrappers.scikit_learn import KerasClassifier
+from keras.optimizers import Adam
+from keras.constraints import maxnorm
+from keras.regularizers import l2
+from keras.layers import GaussianNoise
+from keras.layers import Dropout
+from keras.layers import Dense
+from keras.models import Sequential
+import keras.metrics
+from sklearn.utils.class_weight import compute_class_weight
+
+def create_model(learning_rate=0.001, dropout_rate=0.0, deep='n', neurons=X_train.shape[1], kernel_initializer='glorot_uniform'):
+    model = Sequential()
+    model.add(Dense(neurons, activation='relu', input_dim=X_train.shape[1], kernel_initializer=kernel_initializer))
+    model.add(Dropout(dropout_rate))
+    if deep == "y":
+        model.add(Dense(round(neurons**(1/1.2), 0), activation='relu', input_dim=X_train.shape[1], kernel_initializer=kernel_initializer))
+        model.add(Dropout(dropout_rate))
+        model.add(Dense(round(neurons**(1/1.5), 0), activation='relu', input_dim=X_train.shape[1], kernel_initializer=kernel_initializer))
+        model.add(Dropout(dropout_rate))
+    model.add(Dense(1, activation='sigmoid'))
+    model.compile(
+        optimizer=Adam(learning_rate=learning_rate),
+        loss="binary_crossentropy",
+        metrics=[
+            keras.metrics.AUC(name='ROC_AUC'),
+            "accuracy",
+            keras.metrics.Precision(name="precision"),
+            keras.metrics.Recall(name="recall")
+        ]
+    )
+    return model
+
+model = KerasClassifier(build_fn=create_model, verbose=2) #this wrapper allows us to feed the Keras model into Sklearn's GridSearchCV class
+
+# defining grid search model; # test architectures first, then tune hyperparamters in optimized architecture
+grid_name = "hyparam_grid_"
+
+if grid_name == "arch_grid_":
+    param_grid = dict(
+        epochs=[5],
+        batch_size=[128],
+        deep=['n', 'y'],
+        neurons=[
+            round(X_train.shape[1]**(1/1.5), 0),
+            round(X_train.shape[1]/2, 0),
+            X_train.shape[1],
+            round(X_train.shape[1]*2, 0),
+            round(X_train.shape[1]**(1.5), 0),
+            round(X_train.shape[1]**(1.6), 0),
+            round(X_train.shape[1]**(1.7), 0),
+            round(X_train.shape[1]**(1.8), 0),
+            round(X_train.shape[1]**(1.9), 0),
+            round(X_train.shape[1]**(2), 0),
+            round(X_train.shape[1]**(2.1), 0),
+            round(X_train.shape[1]**(2.2), 0)]
+    )
+elif grid_name == "hyparam_grid_":
+    param_grid = dict(
+        epochs=[5],
+        batch_size=[64, 128, 256, 512, 1024],
+        deep=['y'],
+        neurons=[round(X_train.shape[1]**(1.6), 0)],
+        learning_rate=[0.0001, 0.001, 0.01],
+        dropout_rate=[0.0, 0.45, 0.9],
+        kernel_initializer=['glorot_uniform', 'he_uniform', 'he_normal']
+    )
+elif grid_name == "TEST_grid_":
+    param_grid = dict(
+        epochs=[5],
+        batch_size=[1024],
+        deep=['y'],
+        neurons=[round(X_train.shape[1]**(1.9), 0)],
+        learning_rate=[0.0001, 0.001, 0.01],
+        dropout_rate=[0.0, 0.3, 0.6, 0.9],
+        kernel_initializer=['glorot_uniform', 'he_normal', 'he_uniform']
+    )
+
+import sklearn.metrics
+scoring = {
+    "F1": sklearn.metrics.make_scorer(sklearn.metrics.f1_score),
+    'ROC_AUC': sklearn.metrics.make_scorer(sklearn.metrics.roc_auc_score),
+    "Accuracy": sklearn.metrics.make_scorer(sklearn.metrics.accuracy_score),
+    "Recall": sklearn.metrics.make_scorer(sklearn.metrics.recall_score),
+    "Precision": sklearn.metrics.make_scorer(sklearn.metrics.precision_score)
+}
+
+grid = GridSearchCV(
+    estimator=model,
+    param_grid=param_grid,
+    verbose=3,
+    refit='F1',
+    n_jobs=2,
+    scoring=scoring,
+    return_train_score=True,
+    cv=StratifiedKFold(n_splits=3, shuffle=True),
+)
+
+class_weights = compute_class_weight(
+    class_weight='balanced',
+    classes=np.unique(y_train.values),
+    y=y_train.values.reshape(-1),
+)
+class_weights = dict(zip(np.unique(y_train.values), class_weights))
+
+grid_result = grid.fit(
+    X_train,
+    y_train,
+    class_weight=class_weights)
+
+
+# store grid search results
+results = pd.DataFrame(grid_result.cv_results_["params"])
+results["means_val_F1"] = grid_result.cv_results_["mean_test_F1"]
+results['means_val_ROC_AUC'] = grid_result.cv_results_['mean_test_ROC_AUC']
+results["means_val_Accuracy"] = grid_result.cv_results_["mean_test_Accuracy"]
+results["means_val_Recall"] = grid_result.cv_results_["mean_test_Recall"]
+results["means_val_Precision"] = grid_result.cv_results_["mean_test_Precision"]
+results["means_train_F1"] = grid_result.cv_results_["mean_train_F1"]
+results['means_train_ROC_AUC'] = grid_result.cv_results_['mean_train_ROC_AUC']
+results["means_train_Accuracy"] = grid_result.cv_results_["mean_train_Accuracy"]
+results["means_train_Recall"] = grid_result.cv_results_["mean_train_Recall"]
+results["means_train_Precision"] = grid_result.cv_results_["mean_train_Precision"]
+
+from datetime import datetime
+import openpyxl
+path = "C:\\Users\\marc.feldmann\\Documents\\data_science_local\\CustomerChurnPrediction\\results\\hyparam_opt\\"
+filename = (path + "FNN_clf_GSresults_" + grid_name + datetime.now().strftime("%d_%m_%Y__%H_%M_%S") + ".xlsx")
+results.to_excel(filename)
+
+
 ##################################################################################################
+#### FINAL MODEL TRAINING
 
-X_train.head()
-X_test.head()
-
-y_train.replace(-1, 0, inplace=True)
-y_test.replace(-1, 0, inplace=True)
-
-input_dim = X_train.shape[1]
+# optimum params:
+epochs=
+batch_size=
+neurons=
+learning_rate=
+dropout_rate=
+kernel_initializer=
 
 model = Sequential()
-model.add(Dense(512, activation='relu', input_shape=(input_dim,), kernel_initializer='he_normal'))
-model.add(Dropout(0.2))
-model.add(Dense(256, activation='relu', kernel_initializer='he_normal') )
-model.add(Dropout(0.8))
+model.add(Dense(neurons, activation='relu', input_dim=X_train.shape[1], kernel_initializer=kernel_initializer))
+model.add(Dropout(dropout_rate))
+model.add(Dense(round(neurons**(1/1.2), 0), activation='relu', input_dim=X_train.shape[1], kernel_initializer=kernel_initializer))
+model.add(Dropout(dropout_rate))
+model.add(Dense(round(neurons**(1/1.5), 0), activation='relu', input_dim=X_train.shape[1], kernel_initializer=kernel_initializer))
+model.add(Dropout(dropout_rate))
 model.add(Dense(1, activation='sigmoid'))
-model.summary()
+model.compile(
+    optimizer=Adam(learning_rate=learning_rate),
+    loss="binary_crossentropy",
+    metrics=[
+        keras.metrics.AUC(name='ROC_AUC'),
+        "accuracy",
+        keras.metrics.Precision(name="precision"),
+        keras.metrics.Recall(name="recall")
+    ]
+)
 
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-history = model.fit(X_train.values, np.array(y_train.values), batch_size=512, epochs=50, verbose=1, validation_split=0.2)
+#### STABLE MODEL
+# model = Sequential()
+# model.add(Dense(512, activation='relu', input_dim=X_train.shape[1], kernel_initializer='he_normal'))
+# model.add(Dropout(0.6))
+# model.add(Dense(256, activation='relu', kernel_initializer='he_normal') )
+# model.add(Dropout(0.6))
+# model.add(Dense(1, activation='sigmoid'))
+# model.compile(
+#     optimizer='adam',
+#     loss="binary_crossentropy",
+#     metrics=[
+#         keras.metrics.AUC(name='ROC_AUC'),
+#         "accuracy",
+#         keras.metrics.Precision(name="precision"),
+#         keras.metrics.Recall(name="recall")
+#     ]
+# )
+
+history = model.fit(
+    X_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    verbose=2,
+    class_weight=class_weights
+)
+
+##################################################################################################
+#### MODEL TESTING
 
 y_pred = model.predict(X_test)
 y_pred = pd.DataFrame(y_pred, columns=['churn'])
-print("ROC-AUC score is {}".format(metrics.roc_auc_score(y_test, y_pred)))
+print("ROC-AUC score is {}".format(sklearn.metrics.roc_auc_score(y_test, y_pred)))
 
-precision, recall, thresholds = metrics.precision_recall_curve(y_test, y_pred)
-auc = metrics.auc(recall, precision)
+precision, recall, thresholds = sklearn.metrics.precision_recall_curve(y_test, y_pred)
+auc = sklearn.metrics.auc(recall, precision)
 from matplotlib import pyplot
 no_skill = len(y_test[y_test==1]) / len(y_test)
 pyplot.plot([0, 1], [no_skill, no_skill], linestyle='--', label='Churn Random Guessing')
