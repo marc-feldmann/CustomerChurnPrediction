@@ -151,10 +151,10 @@ y_test.replace(-1, 0, inplace=True)
 X_train_fs, X_cv_fs, y_train_fs, y_cv_fs = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=3992)
 
 random_classifier = RandomForestClassifier()
-parameters = { 'max_depth':np.arange(5,10),'n_estimators':list(range(75,301,25))}
-random_grid = GridSearchCV(random_classifier, parameters, cv = 3)
+parameters = {'max_depth':np.arange(3,10),'n_estimators':list(range(25,251,25))}
+random_grid = GridSearchCV(random_classifier, parameters, cv=3)
 random_grid.fit(X_cv_fs, y_cv_fs)
-print("Best HyperParameter: ",random_grid.best_params_)
+print("Optimal Forest Hyperparams:", random_grid.best_params_)
 
 rf_model = RandomForestClassifier(
     n_estimators=75,
