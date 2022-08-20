@@ -157,8 +157,8 @@ random_grid.fit(X_cv_fs, y_cv_fs)
 print("Optimal Forest Hyperparams:", random_grid.best_params_)
 
 rf_model = RandomForestClassifier(
-    n_estimators=75,
-    max_depth=5,
+    n_estimators=25,
+    max_depth=3,
     max_features=None,
     max_leaf_nodes=None,
     bootstrap=True,
@@ -187,7 +187,7 @@ ax.set_ylabel("Mean Decrease in Impurity (MDI)")
 fig.tight_layout()
 fig.show()
 
-most_imp_feats = feature_importances[:46].index.to_list()
+most_imp_feats = feature_importances[:26].index.to_list()
 X_train = X_train[most_imp_feats]
 X_test = X_test[most_imp_feats]
 
@@ -258,7 +258,7 @@ elif grid_name == "hyparam_grid_":
         epochs=[5],
         batch_size=[64, 128, 256, 512, 1024],
         deep=['y'],
-        neurons=[round(X_train.shape[1]**(1.6), 0)],
+        neurons=[round(X_train.shape[1]**(2.2), 0)],
         learning_rate=[0.0001, 0.001, 0.01],
         dropout_rate=[0.0, 0.45, 0.9],
         kernel_initializer=['glorot_uniform', 'he_uniform', 'he_normal']
@@ -331,12 +331,12 @@ results.to_excel(filename)
 #### FINAL MODEL TRAINING
 
 # optimum params:
-epochs=
-batch_size=
-neurons=
-learning_rate=
-dropout_rate=
-kernel_initializer=
+epochs=5
+batch_size=1024
+neurons=round(X_train.shape[1]**(1.9), 0)
+learning_rate=0.001
+dropout_rate=0.0
+kernel_initializer='glorot_uniform'
 
 model = Sequential()
 model.add(Dense(neurons, activation='relu', input_dim=X_train.shape[1], kernel_initializer=kernel_initializer))
