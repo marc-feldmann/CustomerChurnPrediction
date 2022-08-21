@@ -1,5 +1,6 @@
 '''
-This version, v6, reflects the major script revision in August. It will be the basis for revisiing the notebook "report".
+This version, v6, reflects the major script revision in August.
+It will be the basis for revising the Jupyter-based "Project Report".
 '''
 
 import numpy as np
@@ -406,5 +407,3 @@ plt.xlim(0, 1)
 plt.ylim(0, 1)
 plt.legend()
 plt.show()
-
-
