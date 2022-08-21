@@ -47,7 +47,7 @@ X.info(verbose=True)
 X['Var73']=X['Var73'].astype('float')
 
 
-# Replace all infrequent cat values with same value, store list of all replaced values
+# Replace all infrequent cat values with same value
 features_cat = list(X.select_dtypes(include=['object']).columns)
 for feat in features_cat:
     X.loc[X[feat].value_counts(dropna=False)[X[feat]].values < X.shape[0] * 0.02, feat] = 'RARE_VALUE'
@@ -79,8 +79,9 @@ for clm in X_train:
 
 # missing value imputation: fit and apply imputers
 from sklearn.impute import SimpleImputer
-imputer_nums = SimpleImputer(missing_values=np.nan, strategy='mean')
+
 features_num_train = list(X_train.select_dtypes(include=['float']).columns)
+imputer_nums = SimpleImputer(missing_values=np.nan, strategy='mean')
 X_train[features_num_train] = imputer_nums.fit_transform(X_train[features_num_train])
 
 features_cat_train = list(X_train.select_dtypes(include=['object']).columns)
