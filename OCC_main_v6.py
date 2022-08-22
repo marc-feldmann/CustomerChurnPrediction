@@ -197,7 +197,6 @@ X_test = X_test[most_imp_feats]
 ##################################################################################################
 #### MODEL SELECTION
 
-### EXPERIMENTAL ANN ARCHITECTURE
 from keras.wrappers.scikit_learn import KerasClassifier
 from keras.optimizers import Adam
 from keras.constraints import maxnorm
