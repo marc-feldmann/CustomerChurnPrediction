@@ -307,7 +307,6 @@ grid_result = grid.fit(
     y_train,
     class_weight=class_weights)
 
-#X 
 # store grid search results
 results = pd.DataFrame(grid_result.cv_results_["params"])
 results["means_val_F1"] = grid_result.cv_results_["mean_test_F1"]
