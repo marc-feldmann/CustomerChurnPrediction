@@ -1,3 +1,5 @@
+***main file: report.ipynb***
+
 # Customer Churn Prediction using Feed-Forward Neural Networks
 
 *Disclaimer: This mock project report serves educational purposes only. The company data is public ([https://www.kdd.org/kdd-cup/view/kdd-cup-2009/Data](https://www.kdd.org/kdd-cup/view/kdd-cup-2009/Data)). All other company information is fictional. The author has no commercial relationship with mentioned parties.*
@@ -13,11 +15,6 @@ As a main result, the conducted proof of concept suggests Orange should not rely
 ### Main requirements
 
 Matplotlib/seaborn, sklearn, keras/tf.
-
-
-### Output
-
-![1663586210901](image/README/1663586210901.png)
 
 
 ### Contributing
