@@ -1,8 +1,8 @@
 ***main file: report.ipynb***
 
-# Customer Churn Prediction using Feed-Forward Neural Networks
+# Preventing Customer Churnwith Feedforward Neural Networks
 
-*Disclaimer: This mock project report serves educational purposes only. The company data is public ([https://www.kdd.org/kdd-cup/view/kdd-cup-2009/Data](https://www.kdd.org/kdd-cup/view/kdd-cup-2009/Data)). All other company information is fictional. The author has no commercial relationship with mentioned parties.*
+*Disclaimer: The main file "report.ipynb" is a mock project report that serves educational purposes only. The company data is public ([https://www.kdd.org/kdd-cup/view/kdd-cup-2009/Data](https://www.kdd.org/kdd-cup/view/kdd-cup-2009/Data)). All other company information is fictional. The author has no commercial relationship with mentioned parties.*
 
 
 ### Executive Summary
