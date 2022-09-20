@@ -1,9 +1,8 @@
-***main file: report.ipynb***
+***ain file: report.ipynb***
 
 # Preventing Customer Churn with Feedforward Neural Networks
 
 *Disclaimer: The main file "report.ipynb" is a mock project report that serves educational purposes only. The company data is public ([https://www.kdd.org/kdd-cup/view/kdd-cup-2009/Data](https://www.kdd.org/kdd-cup/view/kdd-cup-2009/Data)). All other company information is fictional. The author has no commercial relationship with mentioned parties.*
-
 
 ### Executive Summary
 
@@ -11,16 +10,13 @@ Customer retention is critical for French telecommunication provider Orange beca
 
 As a main result, the conducted proof of concept suggests Orange should not rely solely on deep ANN models for predicting churn at scale, but combine ANNs with gradient boosted trees and other model classes in an ensemble approach. In any case, a comprehensive yet precise identification of churning customers seems only possible with more comprehensive and consistent methods for collecting customers’behavioral data.
 
-
 ### Main requirements
 
-sklearn, keras/tf, matplotlib/seaborn
-
+Matplotlib/seaborn, sklearn, keras/tf.
 
 ### Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
 
 ### Roadmap
 
