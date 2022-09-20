@@ -14,7 +14,7 @@ As a main result, the conducted proof of concept suggests Orange should not rely
 
 ### Main requirements
 
-Matplotlib/seaborn, sklearn, keras/tf.
+sklearn, keras/tf, matplotlib/seaborn
 
 
 ### Contributing
