@@ -1,4 +1,4 @@
-***ain file: report.ipynb***
+***main file: report.ipynb***
 
 # Preventing Customer Churn with Feedforward Neural Networks
 
